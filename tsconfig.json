@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+      "allowJs": false,
+      "allowSyntheticDefaultImports": true,
+      "baseUrl": "./src",
+      "checkJs": false,
+      "esModuleInterop": true,
+      "incremental": true,
+      "module": "commonjs",
+      "moduleResolution": "node",
+    //   "noImplicitAny": true,
+    //   "noImplicitReturns": true,
+    //   "noImplicitThis": true,
+    //   "noUnusedLocals": true,
+    //   "noUnusedParameters": true,
+      "noFallthroughCasesInSwitch": true,
+      "paths": {},
+      "sourceMap": true,
+      "strict": true,
+      "target": "es6",
+      "outDir": "./lib"
+    },
+    "include": ["src/*"]
+  }
+  

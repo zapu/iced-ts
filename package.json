@@ -1,0 +1,13 @@
+{
+  "name": "iced-ts",
+  "description": "Iced compiler and library in TypeScript",
+  "scripts": {
+    "tsc": "tsc"
+  },
+  "dependencies": {
+    "typescript": "^3.8.3"
+  },
+  "devDependencies": {
+    "ts-node": "^8.8.1"
+  }
+}

@@ -17,7 +17,7 @@
       "paths": {},
       "sourceMap": true,
       "strict": true,
-      "target": "es6",
+      "target": "ES2019",
       "outDir": "./lib"
     },
     "include": ["src/*"]

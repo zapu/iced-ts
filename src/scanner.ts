@@ -12,14 +12,14 @@ export type TokenType = 'BLOCK_START' | 'BLOCK_END' |
 const commonTokens : {[str: string]: TokenType} = {
     '\n': 'NEWLINE',
     '=': "=",
+    '->': 'FUNC',
+    '=>': 'FUNC',
     '+': 'OPERATOR',
     '-': 'OPERATOR',
     '/': 'OPERATOR',
     '*': 'OPERATOR',
     '^': 'OPERATOR',
     '|': 'OPERATOR',
-    '->': 'FUNC',
-    '=>': 'FUNC',
     'return': 'RETURN',
     'if': 'IF',
     'unless': 'UNLESS',
@@ -70,15 +70,6 @@ export class Scanner {
         this.chunk = this.contents.substring(this.pos)
     }
 
-    public findIndent(): number {
-        const m = this.chunk.match(whitespaceRxp)
-        if (!m) {
-            return 0;
-        } else {
-            return m[0].length;
-        }
-    }
-
     private scanRegexp(pattern: RegExp, type: TokenType): Token | null {
         const m = this.chunk.match(pattern)
         if (!m) {
@@ -92,15 +83,19 @@ export class Scanner {
         }
     }
 
-    public scanIdentifier(): Token | null {
+    private scanIdentifier(): Token | null {
         return this.scanRegexp(identifierRxp, 'IDENTIFIER')
     }
 
-    public scanNumber(): Token | null {
+    private scanNumber(): Token | null {
         return this.scanRegexp(numberRxp, 'NUMBER')
     }
 
-    public scanComment(): Token | null {
+    private scanWhitespace() : Token | null {
+        return this.scanRegexp(whitespaceRxp, 'WHITESPACE')
+    }
+
+    private scanComment(): Token | null {
         if (this.chunk[0] === '#') {
             let newLinePos = this.chunk.indexOf('\n')
             if (newLinePos == -1) {
@@ -116,7 +111,7 @@ export class Scanner {
         return null
     }
 
-    public scanCommon(): Token | null {
+    private scanCommon(): Token | null {
         for (const text in commonTokens) {
             if (this.chunk.indexOf(text) === 0) {
                 return {
@@ -124,18 +119,6 @@ export class Scanner {
                     consumed: text.length,
                     val: this.chunk.substr(0, text.length),
                 }
-            }
-        }
-        return null
-    }
-
-    public scanWhitespace() : Token | null {
-        const amount = this.findIndent()
-        if (amount != 0) {
-            return {
-                type: 'WHITESPACE',
-                consumed: amount,
-                val: this.chunk.substr(0, amount),
             }
         }
         return null
@@ -150,11 +133,10 @@ export class Scanner {
         console.log(this.contents)
 
         this.chunk = this.contents
-        let indentLevel = this.findIndent()
-        let blockDepth = 0
 
         const tokens : Token[] = []
         function pushToken(t: Token) {
+            // console.log(t)
             tokens.push(t)
         }
 
@@ -171,23 +153,6 @@ export class Scanner {
 
             pushToken(token)
             this.consumeChunk(token.consumed)
-
-            if (token.type === 'NEWLINE') {
-                const newIndentLevel = this.findIndent()
-                if (newIndentLevel < indentLevel) {
-                    if (blockDepth > 0) {
-                        blockDepth--
-                    }
-                    indentLevel = newIndentLevel
-                    pushToken({ type: 'BLOCK_END', val: '', consumed: newIndentLevel })
-                    this.consumeChunk(newIndentLevel)
-                } else if(newIndentLevel > indentLevel) {
-                    blockDepth++
-                    indentLevel = newIndentLevel
-                    pushToken({ type: 'BLOCK_START', val: '', consumed: newIndentLevel })
-                    this.consumeChunk(newIndentLevel)
-                }
-            }
         }
 
         // Filter out trivia for now

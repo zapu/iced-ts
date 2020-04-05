@@ -6,7 +6,8 @@ const identifierRxp = /^(?!\d)([$\w\x7f-\uffff]+)/
 export type TokenType = 'BLOCK_START' | 'BLOCK_END' |
     'IDENTIFIER' | 'NUMBER' | 'COMMENT' | 'NEWLINE' |
     'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' | 'IS' |
-    'CLASS' | 'RETURN' | 'IF' | 'UNLESS'
+    'CLASS' | 'RETURN' | 'IF' | 'UNLESS' | '(' | ')'|
+    'UNARY' | 'UNARY_MATH'
 
 const commonTokens : {[str: string]: TokenType} = {
     '\n': 'NEWLINE',
@@ -22,7 +23,15 @@ const commonTokens : {[str: string]: TokenType} = {
     'return': 'RETURN',
     'if': 'IF',
     'unless': 'UNLESS',
-}
+    '(': '(',
+    ')': ')',
+    '!': 'UNARY_MATH',
+    '~': 'UNARY_MATH',
+    'new': 'UNARY',
+    'typeof': 'UNARY',
+    'delete': 'UNARY',
+    // 'do': 'UNARY',
+} as const
 
 function isTrivia(type: TokenType) {
     switch (type) {
@@ -47,6 +56,18 @@ export class Scanner {
     reset(contents: string) {
         this.pos = 0
         this.contents = contents
+    }
+
+    public stash(): number {
+        return this.pos
+    }
+
+    public rewind(newPos: number) {
+        if (this.pos < newPos) {
+            throw new Error("Trying to rewind scanner forward")
+        }
+        this.pos = newPos
+        this.chunk = this.contents.substring(this.pos)
     }
 
     public findIndent(): number {

@@ -6,6 +6,8 @@ export abstract class Node {
 }
 
 export abstract class Expression extends Node {
+  parenthesized: boolean = false
+
   abstract emit(): string
 }
 

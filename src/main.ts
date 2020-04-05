@@ -2,7 +2,7 @@ import {Scanner} from './scanner'
 import {Parser} from './parser'
 import * as util from 'util'
 
-const contents = `2 + hello + 4 * 5 + 3`
+const contents = `(1 + 2) * ((3 + 1) / 4)`
 
 const scanner = new Scanner()
 scanner.reset(contents)

@@ -5,7 +5,7 @@ const identifierRxp = /^(?!\d)([$\w\x7f-\uffff]+)/
 
 export type TokenType = 'BLOCK_START' | 'BLOCK_END' |
     'IDENTIFIER' | 'NUMBER' | 'COMMENT' | 'NEWLINE' |
-    'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' |
+    'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' | `,` |
     'CLASS' | 'RETURN' | 'IF' | 'UNLESS' | '(' | ')'|
     'UNARY' | 'UNARY_MATH' | 'BUILTIN_PRIMARY'
 
@@ -40,6 +40,7 @@ const commonTokens : {[str: string]: TokenType} = {
 
     '(': '(',
     ')': ')',
+    ',': ',',
 
     '!': 'UNARY_MATH',
     '~': 'UNARY_MATH',

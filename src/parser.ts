@@ -86,27 +86,59 @@ export class Parser {
       return undefined
     }
     const state = this.cloneState()
+    // Do not recurse on function call rule, we handle chained calls through a
+    // loop in the rule itself.
     this.state.inFCall = true
     const target = this.parsePrimaryExpr()
     if (!target) {
       this.state = state
       return undefined
     }
-    if (this.peekToken()?.type !== '(') {
-      this.state = state
-      return undefined
-    }
-    this.takeToken()
-    this.state.skipNewline++
-    const argument = this.parseExpression()
-    if (this.takeToken()?.type !== ')') {
-      throw new Error('Expected ) in function call')
-    }
-    if (--this.state.skipNewline < 0) {
-      throw new Error("internal: skipNewline mismatch")
-    }
     this.state.inFCall = false
-    return new nodes.FunctionCall(target, argument ? [argument] : [])
+
+    const nextToken = this.peekToken()
+    if (nextToken?.type === '(') {
+      this.takeToken()
+      this.state.skipNewline++
+      const args : nodes.Expression[] = []
+      const firstArg = this.parseExpression()
+      if (firstArg) {
+        args.push(firstArg)
+        while(this.peekToken()?.type === ',') {
+          this.takeToken()
+          const arg = this.parseExpression()
+          if(!arg) {
+            throw new Error("Expected an expression after ',' in function call")
+          }
+          args.push(arg)
+        }
+      }
+      if (this.takeToken()?.type !== ')') {
+        throw new Error('Expected ) in function call')
+      }
+      if (--this.state.skipNewline < 0) {
+        throw new Error("internal: skipNewline mismatch")
+      }
+      return new nodes.FunctionCall(target, args)
+    } else {
+      const firstArg = this.parseExpression()
+      if(!firstArg) {
+        this.state = state
+        return undefined
+      }
+      const args = [firstArg]
+      while(this.peekToken()?.type === ',') {
+        // this.state.skipNewline++
+        this.takeToken()
+        const arg = this.parseExpression()
+        if(!arg) {
+          throw new Error("Expected an expression after ',' in function call")
+        }
+        args.push(arg)
+        // this.state.skipNewline--
+      }
+      return new nodes.FunctionCall(target, args)
+    }
   }
 
   private parseBinaryExpr(): nodes.Expression | undefined {

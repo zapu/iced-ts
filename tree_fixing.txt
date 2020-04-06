@@ -17,3 +17,24 @@ We notice that * has higher prioriy than + so we need to do the fixup to get thi
    *  3
   / \
  1  2
+
+
+
+-----------
+
+
+1 * 2 / 3 * 4
+
+
+      *
+     / \
+    1   /
+       / \
+      2   3
+
+
+    /
+   / \
+  *   3
+ / \
+1   2  

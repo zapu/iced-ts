@@ -1,4 +1,4 @@
-import {Token} from './scanner'
+import {Token, isTrivia} from './scanner'
 import * as nodes from './nodes'
 
 const operatorPriority : {[k: string]: number}= {
@@ -8,24 +8,51 @@ const operatorPriority : {[k: string]: number}= {
   '/': 100,
 }
 
+interface ParserState {
+  pos: number
+  skipNewline: boolean
+}
+
 export class Parser {
   tokens: Token[] = []
-  pos: number = 0
+  state: ParserState = {} as ParserState
 
   public reset(tokens: Token[]) {
     this.tokens = tokens
-    this.pos = 0
+    this.state = {
+      pos: 0,
+      skipNewline: false,
+    }
   }
 
-  private peekToken(ahead: number = 0): Token | null {
-    return this.tokens[this.pos + ahead] ?? null
+  private cloneState(): ParserState {
+    return { ...this.state }
+  }
+
+  private peekToken(): Token | undefined {
+    for(let i = this.state.pos; i < this.tokens.length; i++) {
+      const token = this.tokens[i]
+      if(this.state.skipNewline && token.type === 'NEWLINE') {
+        continue
+      }
+      if(!isTrivia(token.type)) {
+        return token
+      }
+    }
   }
 
   private takeToken(): Token {
-    if (this.pos >= this.tokens.length) {
-      throw new Error("ran out of tokens in takeToken")
+    while(this.state.pos < this.tokens.length) {
+      const token = this.tokens[this.state.pos]
+      this.state.pos++
+      if(this.state.skipNewline && token.type === 'NEWLINE') {
+        continue
+      }
+      if(!isTrivia(token.type)) {
+        return token
+      }
     }
-    return this.tokens[this.pos++]
+    throw new Error("Ran out of tokens")
   }
 
   private parseNumber() {
@@ -44,7 +71,7 @@ export class Parser {
     }
   }
 
-  private getOperator() {
+  private parseOperator() {
     const token = this.peekToken()
     if (token?.type === 'OPERATOR') {
       this.takeToken()
@@ -52,65 +79,89 @@ export class Parser {
     }
   }
 
-  private parseExpression(noBinary: boolean = false): nodes.Expression | undefined {
+  private parseParenthesizedExpression(): nodes.Expression | undefined {
     const token = this.peekToken()
     if (token?.type === '(') {
       this.takeToken()
-      const pos = this.pos
-      const expr = this.parseBinaryExpression() || this.parseExpression()
-      if(!expr) {
-        this.pos = pos
-        return undefined
+      const expr = this.parseExpression()
+      if (!expr) {
+        throw new Error("Expected an expression after (")
       }
       if (this.takeToken().type !== ')') {
-        throw new Error(`Expected ) ${this.pos}`)
+        throw new Error('Expected )')
       }
       expr.parenthesized = true
       return expr
     }
+  }
 
-    return (!noBinary && this.parseBinaryExpression()) ||
+  private parseFunctionCall(): nodes.FunctionCall | undefined {
+    const state = this.cloneState()
+    const target = this.parseExpression()
+    if (!target) {
+      this.state = state
+      return undefined
+    }
+    if (this.takeToken()?.type !== '(') {
+      this.state = state
+      return undefined
+    }
+    this.state.skipNewline = true
+    const argument = this.parseExpression()
+    if (this.takeToken()?.type !== ')') {
+      throw new Error('Expected ) in function call')
+    }
+    this.state.skipNewline = false
+    return new nodes.FunctionCall(target, argument ? [argument] : [])
+  }
+
+  private parseExpression(noBinary?: boolean): nodes.Expression | undefined {
+    return this.parseParenthesizedExpression() ||
+      this.parseFunctionCall() ||
+      (!noBinary && this.parseBinaryOperation()) ||
       this.parseNumber() ||
       this.parseIdentifier()
   }
 
-  private parseBinaryExpression(): nodes.BinaryExpression | undefined {
-    const pos = this.pos // stash pos if we have to roll back
+  private parseBinaryOperation(): nodes.BinaryOperation | undefined {
+    const state = this.cloneState()
+    this.state.skipNewline = true
     const left : nodes.Expression | undefined = this.parseExpression(true)
     if (!left) {
-      this.pos = pos
+      this.state = state
       return undefined
     }
-    const op = this.getOperator()
+    const op = this.parseOperator()
     if (!op) {
-      this.pos = pos
+      this.state = state
       return undefined
     }
     const right : nodes.Expression | undefined = this.parseExpression()
     if (!right) {
-      this.pos = pos
-      return undefined
+      throw new Error(`Expected to find an expression after '${op.val}'`)
     }
+
+    this.state.skipNewline = false
 
     // We are building right-slanted tree here, our left side will always be
     // an Expression, but right side may be a BinaryExpression.
     const pri = operatorPriority[op.val] ?? 0
-    if (right instanceof nodes.BinaryExpression && !right.parenthesized) {
+    if (right instanceof nodes.BinaryOperation && !right.parenthesized) {
       const rightPri = operatorPriority[right.operator.val] ?? 0
       if (pri > rightPri) {
         // Rotate tree if operator on the right side has lower priority.
         // E.g. we are * but we get + on the right side.
         const newRight = right.right
-        const newLeft = new nodes.BinaryExpression(left, op, right.left)
-        return new nodes.BinaryExpression(newLeft, right.operator, newRight)
+        const newLeft = new nodes.BinaryOperation(left, op, right.left)
+        return new nodes.BinaryOperation(newLeft, right.operator, newRight)
       }
     }
 
-    return new nodes.BinaryExpression(left, op, right)
+    return new nodes.BinaryOperation(left, op, right)
   }
 
   private parseBlock() {
-    return this.parseBinaryExpression() || this.parseExpression()
+    return this.parseExpression()
   }
 
   public parse() {

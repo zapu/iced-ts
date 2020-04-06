@@ -33,7 +33,7 @@ const commonTokens : {[str: string]: TokenType} = {
     // 'do': 'UNARY',
 } as const
 
-function isTrivia(type: TokenType) {
+export function isTrivia(type: TokenType) {
     switch (type) {
         case 'WHITESPACE':
         case 'COMMENT':
@@ -155,7 +155,6 @@ export class Scanner {
             this.consumeChunk(token.consumed)
         }
 
-        // Filter out trivia for now
-        return tokens.filter(x => !isTrivia(x.type))
+        return tokens
     }
 }

@@ -2,12 +2,14 @@ import {Scanner} from './scanner'
 import {Parser} from './parser'
 import * as util from 'util'
 
-const contents = `
-(1 + 2) * ((3 + 1) / 4)
+// const contents = `
+// (1 + 2) * ((3 + 1) / 4)
 
-foo = ->
-  return 1
-`
+// foo = ->
+//   return 1
+// `
+
+const contents = `func(1)`
 
 const scanner = new Scanner()
 scanner.reset(contents)

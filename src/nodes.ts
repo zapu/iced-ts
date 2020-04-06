@@ -35,7 +35,11 @@ export class Identifier extends Expression {
   }
 }
 
-export class BinaryExpression extends Expression {
+export abstract class Operation extends Expression {
+
+}
+
+export class BinaryOperation extends Operation {
   left: Expression
   operator: Token
   right: Expression
@@ -49,6 +53,21 @@ export class BinaryExpression extends Expression {
 
   emit(): string {
     return `( ${this.left.emit()} ${this.operator.val} ${this.right.emit()} )`
+  }
+}
+
+export class FunctionCall extends Expression {
+  target: Expression
+  args: Expression[]
+
+  constructor(target: Expression, args: Expression[]) {
+    super()
+    this.target = target
+    this.args = args
+  }
+
+  emit(): string {
+    return `${this.target.emit()}(${this.args.map(x => x.emit()).join(', ')})`
   }
 }
 

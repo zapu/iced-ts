@@ -175,6 +175,7 @@ export class Parser {
     if (this.peekToken()?.type !== '(') {
       return undefined
     }
+    const state = this.cloneState()
     this.takeToken()
     // Found parentesiszed expression, start skipping newline.
     this.state.skipNewline++
@@ -183,6 +184,26 @@ export class Parser {
       throw new Error("Expected expression after (")
     }
     if (this.takeToken()?.type !== ')') {
+      if (this.state.inFCall) {
+        // We might have gotten here because we are parsing something like:
+        //   `(func_foo 1, 2, 3)`
+        //
+        // Which leads us through the following path:
+        // - parseExpression
+        //  - parseBinaryExpr
+        //   - parsePrimaryExpr
+        //    - parseFunctionCall
+        //     - parsePrimaryExpr (looking for target, inFCall is set)
+        //      - (found parentesiszed expression), parseExpression
+        //       - ... got `func_foo`
+        //      - *WE ARE HERE* didn't get ')' after the expression
+        //
+        // So we have to rewind back and *start* with the parentesiszed and
+        // find the function call inside, instead of starting with a function
+        // call and trying to match parentesiszed expr as target.
+        this.state = state
+        return undefined
+      }
       throw new Error("Expected ) after expression")
     }
     if (--this.state.skipNewline < 0) {

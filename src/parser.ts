@@ -79,86 +79,133 @@ export class Parser {
     }
   }
 
-  private parseParenthesizedExpression(): nodes.Expression | undefined {
-    const token = this.peekToken()
-    if (token?.type === '(') {
-      this.takeToken()
-      const expr = this.parseExpression()
-      if (!expr) {
-        throw new Error("Expected an expression after (")
-      }
-      if (this.takeToken().type !== ')') {
-        throw new Error('Expected )')
-      }
-      expr.parenthesized = true
-      return expr
+  // private parseParenthesizedExpression(): nodes.Expression | undefined {
+  //   const token = this.peekToken()
+  //   if (token?.type === '(') {
+  //     this.takeToken()
+  //     const expr = this.parseExpression()
+  //     if (!expr) {
+  //       throw new Error("Expected an expression after (")
+  //     }
+  //     if (this.takeToken().type !== ')') {
+  //       throw new Error('Expected )')
+  //     }
+  //     expr.parenthesized = true
+  //     return expr
+  //   }
+  // }
+
+  // private parseFunctionCall(): nodes.FunctionCall | undefined {
+  //   const state = this.cloneState()
+  //   const target = this.parseExpression()
+  //   if (!target) {
+  //     this.state = state
+  //     return undefined
+  //   }
+  //   if (this.takeToken()?.type !== '(') {
+  //     this.state = state
+  //     return undefined
+  //   }
+  //   this.state.skipNewline = true
+  //   const argument = this.parseExpression()
+  //   if (this.takeToken()?.type !== ')') {
+  //     throw new Error('Expected ) in function call')
+  //   }
+  //   this.state.skipNewline = false
+  //   return new nodes.FunctionCall(target, argument ? [argument] : [])
+  // }
+
+  private parseEquality(): nodes.Expression | undefined {
+    let left = this.parseComparsion()
+    if(!left) {
+      return undefined
     }
+    while(this.peekToken()?.type === 'OPERATOR') {
+      const opToken = this.takeToken()
+      switch(opToken.val) {
+        case 'is':
+        case 'isnt':
+        case '==':
+        case '!=':
+        case '>=':
+        case '<=':
+        case '>':
+        case '<':
+          break
+        default:
+          return left
+      }
+      const right = this.parseComparsion()
+      if (!right) {
+        throw new Error(`parse error after ${opToken.val}`)
+      }
+      left = new nodes.Equality(left, opToken, right)
+    }
+    return left
   }
 
-  private parseFunctionCall(): nodes.FunctionCall | undefined {
-    const state = this.cloneState()
-    const target = this.parseExpression()
-    if (!target) {
-      this.state = state
-      return undefined
+  private parseComparsion(): nodes.Expression | undefined {
+    return this.parsePrimaryExpr()
+  }
+
+  private parsePrimaryExpr(): nodes.Expression | undefined {
+    const number = this.parseNumber()
+    if(number) {
+      return number
     }
     if (this.takeToken()?.type !== '(') {
-      this.state = state
-      return undefined
+      throw new Error("Expected ( in expression")
     }
-    this.state.skipNewline = true
-    const argument = this.parseExpression()
+    const expr = this.parseExpression()
+    if (!expr) {
+      throw new Error("Expected expression after (")
+    }
     if (this.takeToken()?.type !== ')') {
-      throw new Error('Expected ) in function call')
+      throw new Error("Expected ) after expression")
     }
-    this.state.skipNewline = false
-    return new nodes.FunctionCall(target, argument ? [argument] : [])
+    return new nodes.Parens(expr)
   }
 
-  private parseExpression(noBinary?: boolean): nodes.Expression | undefined {
-    return this.parseParenthesizedExpression() ||
-      this.parseFunctionCall() ||
-      (!noBinary && this.parseBinaryOperation()) ||
-      this.parseNumber() ||
-      this.parseIdentifier()
+  private parseExpression(noBinary?: boolean): nodes.Node | undefined {
+    return this.parseEquality()
   }
 
-  private parseBinaryOperation(): nodes.BinaryOperation | undefined {
-    const state = this.cloneState()
-    this.state.skipNewline = true
-    const left : nodes.Expression | undefined = this.parseExpression(true)
-    if (!left) {
-      this.state = state
-      return undefined
-    }
-    const op = this.parseOperator()
-    if (!op) {
-      this.state = state
-      return undefined
-    }
-    const right : nodes.Expression | undefined = this.parseExpression()
-    if (!right) {
-      throw new Error(`Expected to find an expression after '${op.val}'`)
-    }
+  // private parseBinaryOperation(): nodes.BinaryOperation | undefined {
+  //   const state = this.cloneState()
+  //   this.state.skipNewline = true
+  //   const left : nodes.Expression | undefined = this.parseExpression(true)
+  //   if (!left) {
+  //     this.state = state
+  //     return undefined
+  //   }
+  //   const op = this.parseOperator()
+  //   if (!op) {
+  //     this.state = state
+  //     return undefined
+  //   }
+  //   const right : nodes.Expression | undefined = this.parseExpression()
+  //   if (!right) {
+  //     throw new Error(`Expected to find an expression after '${op.val}'`)
+  //   }
 
-    this.state.skipNewline = false
+  //   this.state.skipNewline = false
 
-    // We are building right-slanted tree here, our left side will always be
-    // an Expression, but right side may be a BinaryExpression.
-    const pri = operatorPriority[op.val] ?? 0
-    if (right instanceof nodes.BinaryOperation && !right.parenthesized) {
-      const rightPri = operatorPriority[right.operator.val] ?? 0
-      if (pri > rightPri) {
-        // Rotate tree if operator on the right side has lower priority.
-        // E.g. we are * but we get + on the right side.
-        const newRight = right.right
-        const newLeft = new nodes.BinaryOperation(left, op, right.left)
-        return new nodes.BinaryOperation(newLeft, right.operator, newRight)
-      }
-    }
+  //   // We are building right-slanted tree here, our left side will always be
+  //   // an Expression, but right side may be a BinaryExpression.
+  //   const pri = operatorPriority[op.val] ?? 0
+  //   if (right instanceof nodes.BinaryOperation && !right.parenthesized) {
+  //     const rightPri = operatorPriority[right.operator.val] ?? 0
+  //     if (pri > rightPri) {
+  //       // Rotate tree if operator on the right side has lower priority.
+  //       // E.g. we are * but we get + on the right side.
+  //       const newRight = right.right
+  //       const newLeft = new nodes.BinaryOperation(left, op, right.left)
+  //       return new nodes.BinaryOperation(newLeft, right.operator, newRight)
+  //     }
+  //   }
 
-    return new nodes.BinaryOperation(left, op, right)
-  }
+  //   return new nodes.BinaryOperation(left, op, right)
+  // }
 
   private parseBlock() {
     return this.parseExpression()

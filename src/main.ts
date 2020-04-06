@@ -9,7 +9,7 @@ import * as util from 'util'
 //   return 1
 // `
 
-const contents = `func(1)`
+const contents = `(1 is 2 is 3)`
 
 const scanner = new Scanner()
 scanner.reset(contents)

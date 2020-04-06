@@ -3,12 +3,23 @@ import {Token} from './scanner'
 export abstract class Node {
   // trivia: Token[] = []
   // tokens: Token[] = []
+  abstract emit(): string
+}
+
+export class Parens extends Node {
+  contents: Node
+
+  constructor(contents: Node) {
+    super()
+    this.contents = contents
+  }
+
+  emit() {
+    return `( ${this.contents.emit()} )`
+  }
 }
 
 export abstract class Expression extends Node {
-  parenthesized: boolean = false
-
-  abstract emit(): string
 }
 
 export class Number extends Expression {
@@ -32,6 +43,23 @@ export class Identifier extends Expression {
 
   emit(): string {
     return this.content
+  }
+}
+
+export class Equality extends Expression {
+  left: Expression
+  operator: Token
+  right: Expression
+
+  constructor(left: Expression, operator: Token, right: Expression) {
+    super()
+    this.left = left
+    this.operator = operator
+    this.right = right
+  }
+
+  emit(): string {
+    return `( ${this.left.emit()} ${this.operator.val} ${this.right.emit()} )`
   }
 }
 
@@ -71,6 +99,6 @@ export class FunctionCall extends Expression {
   }
 }
 
-export class Block extends Node {
-  expressions: Expression[] = []
-}
+// export class Block extends Node {
+//   expressions: Expression[] = []
+// }

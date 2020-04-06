@@ -5,32 +5,52 @@ const identifierRxp = /^(?!\d)([$\w\x7f-\uffff]+)/
 
 export type TokenType = 'BLOCK_START' | 'BLOCK_END' |
     'IDENTIFIER' | 'NUMBER' | 'COMMENT' | 'NEWLINE' |
-    'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' | 'IS' |
+    'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' |
     'CLASS' | 'RETURN' | 'IF' | 'UNLESS' | '(' | ')'|
-    'UNARY' | 'UNARY_MATH'
+    'UNARY' | 'UNARY_MATH' | 'BUILTIN_PRIMARY'
 
 const commonTokens : {[str: string]: TokenType} = {
-    '\n': 'NEWLINE',
-    '=': "=",
     '->': 'FUNC',
     '=>': 'FUNC',
+
+    '\n': 'NEWLINE',
+    '=': "=",
+
+    'is': 'OPERATOR',
+    'isnt': 'OPERATOR',
+    '==': 'OPERATOR',
+    '!=': 'OPERATOR',
+    '>=': 'OPERATOR',
+    '<=': 'OPERATOR',
+    '>': 'OPERATOR',
+    '<': 'OPERATOR',
+
     '+': 'OPERATOR',
     '-': 'OPERATOR',
     '/': 'OPERATOR',
     '*': 'OPERATOR',
     '^': 'OPERATOR',
     '|': 'OPERATOR',
+
     'return': 'RETURN',
+
     'if': 'IF',
     'unless': 'UNLESS',
+
     '(': '(',
     ')': ')',
+
     '!': 'UNARY_MATH',
     '~': 'UNARY_MATH',
+
     'new': 'UNARY',
     'typeof': 'UNARY',
     'delete': 'UNARY',
-    // 'do': 'UNARY',
+
+    'true' : 'BUILTIN_PRIMARY',
+    'false' : 'BUILTIN_PRIMARY',
+    'undefined' : 'BUILTIN_PRIMARY',
+    'null' : 'BUILTIN_PRIMARY',
 } as const
 
 export function isTrivia(type: TokenType) {

@@ -1,9 +1,10 @@
-import {Token} from './scanner'
+import { Token } from './scanner'
 
 export abstract class Node {
   // trivia: Token[] = []
   // tokens: Token[] = []
   abstract emit(): string
+  abstract debugEvalJS(): any
 }
 
 export class Parens extends Node {
@@ -16,6 +17,10 @@ export class Parens extends Node {
 
   emit() {
     return `( ${this.contents.emit()} )`
+  }
+
+  debugEvalJS() {
+    return this.contents.debugEvalJS()
   }
 }
 
@@ -32,6 +37,10 @@ export class Number extends Expression {
   emit(): string {
     return this.content
   }
+
+  debugEvalJS() {
+    return parseInt(this.content)
+  }
 }
 
 export class Identifier extends Expression {
@@ -43,6 +52,10 @@ export class Identifier extends Expression {
 
   emit(): string {
     return this.content
+  }
+
+  debugEvalJS(): number {
+    throw new Error(`Invalid evalMath on ${this.content}`)
   }
 }
 
@@ -60,6 +73,27 @@ export class Equality extends Expression {
 
   emit(): string {
     return `( ${this.left.emit()} ${this.operator.val} ${this.right.emit()} )`
+  }
+
+  debugEvalJS(): any {
+    switch (this.operator.val) {
+      case '+':
+        return this.left.debugEvalJS() + this.right.debugEvalJS()
+      case '-':
+        return this.left.debugEvalJS() - this.right.debugEvalJS()
+      case '*':
+        return this.left.debugEvalJS() * this.right.debugEvalJS()
+      case '/':
+        return this.left.debugEvalJS() / this.right.debugEvalJS()
+      case '==':
+      case 'is':
+        return this.left.debugEvalJS() === this.right.debugEvalJS()
+      case '!=':
+      case 'isnt':
+        return this.left.debugEvalJS() !== this.right.debugEvalJS()
+      default:
+        throw new Error(`Don't know how to evalJS with ${this.operator.val}`)
+    }
   }
 }
 
@@ -82,6 +116,10 @@ export class BinaryOperation extends Operation {
   emit(): string {
     return `( ${this.left.emit()} ${this.operator.val} ${this.right.emit()} )`
   }
+
+  debugEvalJS(): any {
+    throw new Error("binaryop")
+  }
 }
 
 export class FunctionCall extends Expression {
@@ -96,6 +134,10 @@ export class FunctionCall extends Expression {
 
   emit(): string {
     return `${this.target.emit()}(${this.args.map(x => x.emit()).join(', ')})`
+  }
+
+  debugEvalJS(): number {
+    throw new Error(`Invalid evalMath on ${this.emit()}`)
   }
 }
 

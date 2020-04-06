@@ -115,37 +115,26 @@ export class Parser {
   //   return new nodes.FunctionCall(target, argument ? [argument] : [])
   // }
 
-  private parseEquality(): nodes.Expression | undefined {
-    let left = this.parseComparsion()
+  private parseBinaryExpr(): nodes.Expression | undefined {
+    let left = this.parsePrimaryExpr()
     if(!left) {
       return undefined
     }
     while(this.peekToken()?.type === 'OPERATOR') {
       const opToken = this.takeToken()
-      switch(opToken.val) {
-        case 'is':
-        case 'isnt':
-        case '==':
-        case '!=':
-        case '>=':
-        case '<=':
-        case '>':
-        case '<':
-          break
-        default:
-          return left
-      }
-      const right = this.parseComparsion()
+      const right = this.parsePrimaryExpr()
       if (!right) {
         throw new Error(`parse error after ${opToken.val}`)
+      }
+      if (left instanceof nodes.Equality) {
+        if ((operatorPriority[opToken.val] ?? 0) > (operatorPriority[left.operator.val] ?? 0)) {
+          left.right = new nodes.Equality(left.right, opToken, right)
+          continue
+        }
       }
       left = new nodes.Equality(left, opToken, right)
     }
     return left
-  }
-
-  private parseComparsion(): nodes.Expression | undefined {
-    return this.parsePrimaryExpr()
   }
 
   private parsePrimaryExpr(): nodes.Expression | undefined {
@@ -167,7 +156,7 @@ export class Parser {
   }
 
   private parseExpression(noBinary?: boolean): nodes.Node | undefined {
-    return this.parseEquality()
+    return this.parseBinaryExpr()
   }
 
   // private parseBinaryOperation(): nodes.BinaryOperation | undefined {

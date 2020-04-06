@@ -14,7 +14,6 @@ const commonTokens : {[str: string]: TokenType} = {
     '=>': 'FUNC',
 
     '\n': 'NEWLINE',
-    '=': "=",
 
     'is': 'OPERATOR',
     'isnt': 'OPERATOR',
@@ -31,6 +30,8 @@ const commonTokens : {[str: string]: TokenType} = {
     '*': 'OPERATOR',
     '^': 'OPERATOR',
     '|': 'OPERATOR',
+
+    '=': "=",
 
     'return': 'RETURN',
 

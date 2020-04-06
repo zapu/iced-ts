@@ -9,7 +9,9 @@ import * as util from 'util'
 //   return 1
 // `
 
-const contents = `(1 is 2 is 3)`
+const contents = `0 * 1 + 2 * 3 == 3 + 3`
+// const contents = `1 + 2 * 3 * 4`
+// const contents = `1 + 2 * 3`
 
 const scanner = new Scanner()
 scanner.reset(contents)
@@ -23,3 +25,6 @@ const nodes = parser.parse()
 console.log(util.inspect(nodes, false, null))
 
 console.log(nodes?.emit())
+
+console.log('evalMath:',nodes?.debugEvalJS())
+console.log('eval:',eval(contents))

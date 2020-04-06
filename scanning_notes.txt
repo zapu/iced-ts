@@ -1,0 +1,40 @@
+
+wtf = 1
+
+
+func = ->
+  hello = 2
+
+
+
+[empty \n (1)]
+[id "wtf"] [/s] [=] [/s] [number "1"] [\n]
+[empty \n (2)]
+[id "func] [/s] [=] [/s] [func "->"] [\n]
+[indent 2] [id "hello"] [\s] [=] [\s] [number "2"]
+
+
+[block indent=0]
+
+
+- get indent
+
+
+
+
+func = -> return 1
+
+[id "func"] [/s] [=] [/s] [func "->"] [/s] [return] [/s] [number "1"] [\n]
+
+func = ->
+  ###
+  wow hello???
+  ###
+  return 2
+
+[id "func"] [/s] [=] [/s] [func "->"] [/s] [\n]
+[block start] [return] [/s] [number "1"] [\n]
+[block end]
+
+
+

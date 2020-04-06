@@ -59,7 +59,7 @@ export class Identifier extends Expression {
   }
 }
 
-export class Equality extends Expression {
+export class BinaryExpression extends Expression {
   left: Expression
   operator: Token
   right: Expression
@@ -99,27 +99,6 @@ export class Equality extends Expression {
 
 export abstract class Operation extends Expression {
 
-}
-
-export class BinaryOperation extends Operation {
-  left: Expression
-  operator: Token
-  right: Expression
-
-  constructor(left: Expression, operator: Token, right: Expression) {
-    super()
-    this.left = left
-    this.operator = operator
-    this.right = right
-  }
-
-  emit(): string {
-    return `( ${this.left.emit()} ${this.operator.val} ${this.right.emit()} )`
-  }
-
-  debugEvalJS(): any {
-    throw new Error("binaryop")
-  }
 }
 
 export class FunctionCall extends Expression {

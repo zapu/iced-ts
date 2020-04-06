@@ -1,0 +1,11 @@
+expr -> binary
+binary -> primary ( OP primary )*
+primary -> NUMBER | STRING | 'false' | 'true' | 'null' | 'undefined'
+    | groupExpr
+
+groupExpr -> '(' expr ')'
+
+
+
+f_call -> expr ( '(' ( expr ',' )* expr? ')' )+  # support chained calls like func(1)()
+f_call -> expr ( expr ',' )* expr

@@ -10,7 +10,7 @@ const operatorPriority : {[k: string]: number}= {
 
 interface ParserState {
   pos: number
-  skipNewline: boolean
+  skipNewline: number
 }
 
 export class Parser {
@@ -21,7 +21,7 @@ export class Parser {
     this.tokens = tokens
     this.state = {
       pos: 0,
-      skipNewline: false,
+      skipNewline: 0,
     }
   }
 
@@ -79,22 +79,6 @@ export class Parser {
     }
   }
 
-  // private parseParenthesizedExpression(): nodes.Expression | undefined {
-  //   const token = this.peekToken()
-  //   if (token?.type === '(') {
-  //     this.takeToken()
-  //     const expr = this.parseExpression()
-  //     if (!expr) {
-  //       throw new Error("Expected an expression after (")
-  //     }
-  //     if (this.takeToken().type !== ')') {
-  //       throw new Error('Expected )')
-  //     }
-  //     expr.parenthesized = true
-  //     return expr
-  //   }
-  // }
-
   // private parseFunctionCall(): nodes.FunctionCall | undefined {
   //   const state = this.cloneState()
   //   const target = this.parseExpression()
@@ -126,31 +110,39 @@ export class Parser {
       if (!right) {
         throw new Error(`parse error after ${opToken.val}`)
       }
-      if (left instanceof nodes.Equality) {
+      if (left instanceof nodes.BinaryExpression) {
         if ((operatorPriority[opToken.val] ?? 0) > (operatorPriority[left.operator.val] ?? 0)) {
-          left.right = new nodes.Equality(left.right, opToken, right)
+          left.right = new nodes.BinaryExpression(left.right, opToken, right)
           continue
         }
       }
-      left = new nodes.Equality(left, opToken, right)
+      left = new nodes.BinaryExpression(left, opToken, right)
     }
     return left
   }
 
   private parsePrimaryExpr(): nodes.Expression | undefined {
-    const number = this.parseNumber()
-    if(number) {
-      return number
+    // Primary expressions
+    const simple = this.parseNumber() ||
+      this.parseIdentifier()
+    if(simple) {
+      return simple
     }
+
     if (this.takeToken()?.type !== '(') {
       throw new Error("Expected ( in expression")
     }
+    // Found parentesiszed expression, start skipping newline.
+    this.state.skipNewline++
     const expr = this.parseExpression()
     if (!expr) {
       throw new Error("Expected expression after (")
     }
     if (this.takeToken()?.type !== ')') {
       throw new Error("Expected ) after expression")
+    }
+    if (--this.state.skipNewline < 0) {
+      throw new Error("internal: skipNewline mismatch")
     }
     return new nodes.Parens(expr)
   }

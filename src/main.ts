@@ -9,8 +9,8 @@ import * as util from 'util'
 //   return 1
 // `
 
-const contents = `0 * 1 + 2 * 3 == 3 + 3`
-// const contents = `1 + 2 * 3 * 4`
+const contents = `0 * 1 + 2 * 3 == (3 + 3)`
+// const contents = `(1  + 2) * 3 * 4`
 // const contents = `1 + 2 * 3`
 
 const scanner = new Scanner()

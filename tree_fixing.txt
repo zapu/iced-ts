@@ -4,6 +4,10 @@
 
 Steps
 
+having:
+1
+seeing: + 2
+
 
 having:
   +
@@ -11,6 +15,8 @@ having:
 1   2
 
 seeing: * 3
+
+
 
 
 

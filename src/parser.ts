@@ -11,6 +11,7 @@ const operatorPriority : {[k: string]: number}= {
 interface ParserState {
   pos: number
   skipNewline: number
+  inFCall: boolean
 }
 
 export class Parser {
@@ -22,6 +23,7 @@ export class Parser {
     this.state = {
       pos: 0,
       skipNewline: 0,
+      inFCall: false,
     }
   }
 
@@ -79,25 +81,33 @@ export class Parser {
     }
   }
 
-  // private parseFunctionCall(): nodes.FunctionCall | undefined {
-  //   const state = this.cloneState()
-  //   const target = this.parseExpression()
-  //   if (!target) {
-  //     this.state = state
-  //     return undefined
-  //   }
-  //   if (this.takeToken()?.type !== '(') {
-  //     this.state = state
-  //     return undefined
-  //   }
-  //   this.state.skipNewline = true
-  //   const argument = this.parseExpression()
-  //   if (this.takeToken()?.type !== ')') {
-  //     throw new Error('Expected ) in function call')
-  //   }
-  //   this.state.skipNewline = false
-  //   return new nodes.FunctionCall(target, argument ? [argument] : [])
-  // }
+  private parseFunctionCall(): nodes.FunctionCall | undefined {
+    if (this.state.inFCall) {
+      return undefined
+    }
+    const state = this.cloneState()
+    this.state.inFCall = true
+    const target = this.parsePrimaryExpr()
+    if (!target) {
+      this.state = state
+      return undefined
+    }
+    if (this.peekToken()?.type !== '(') {
+      this.state = state
+      return undefined
+    }
+    this.takeToken()
+    this.state.skipNewline++
+    const argument = this.parseExpression()
+    if (this.takeToken()?.type !== ')') {
+      throw new Error('Expected ) in function call')
+    }
+    if (--this.state.skipNewline < 0) {
+      throw new Error("internal: skipNewline mismatch")
+    }
+    this.state.inFCall = false
+    return new nodes.FunctionCall(target, argument ? [argument] : [])
+  }
 
   private parseBinaryExpr(): nodes.Expression | undefined {
     let left = this.parsePrimaryExpr()
@@ -123,15 +133,17 @@ export class Parser {
 
   private parsePrimaryExpr(): nodes.Expression | undefined {
     // Primary expressions
-    const simple = this.parseNumber() ||
+    const simple = this.parseFunctionCall() ||
+      this.parseNumber() ||
       this.parseIdentifier()
     if(simple) {
       return simple
     }
 
-    if (this.takeToken()?.type !== '(') {
-      throw new Error("Expected ( in expression")
+    if (this.peekToken()?.type !== '(') {
+      return undefined
     }
+    this.takeToken()
     // Found parentesiszed expression, start skipping newline.
     this.state.skipNewline++
     const expr = this.parseExpression()

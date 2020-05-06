@@ -120,6 +120,25 @@ export class FunctionCall extends Expression {
   }
 }
 
+export class UnaryExpression extends Expression {
+  operator: Token
+  expression: Expression
+
+  constructor(operator: Token, expression: Expression) {
+    super()
+    this.operator = operator
+    this.expression = expression
+  }
+
+  emit(): string {
+    return `${this.operator.val} ${this.expression.emit()}`
+  }
+
+  debugEvalJS(): number {
+    throw new Error(`Invalid evalMath on ${this.emit()}`)
+  }
+}
+
 // export class Block extends Node {
 //   expressions: Expression[] = []
 // }

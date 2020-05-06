@@ -13,7 +13,7 @@ import * as util from 'util'
 // const contents = `0 * (1 + 2) * 3 == (func + 2)()`
 // const contents = `(1  + 2) * 3 * 4`
 // const contents = `1 + 2 * 3`
-const contents = `(func 1, 2)`
+const contents = `1 - 2`
 
 const scanner = new Scanner()
 scanner.reset(contents)

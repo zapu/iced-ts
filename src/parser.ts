@@ -14,6 +14,16 @@ interface ParserState {
   inFCall: boolean
 }
 
+function isUnary(token: Token): boolean {
+  if (['UNARY', 'UNARY_MATH'].includes(token.type)) {
+    return true
+  }
+  else if (token.type === 'OPERATOR' && ['+', '-'].includes(token.val)) {
+    return true
+  }
+  return false
+}
+
 export class Parser {
   tokens: Token[] = []
   state: ParserState = {} as ParserState
@@ -142,13 +152,13 @@ export class Parser {
   }
 
   private parseBinaryExpr(): nodes.Expression | undefined {
-    let left = this.parsePrimaryExpr()
+    let left = this.parseUnaryExpr()
     if(!left) {
       return undefined
     }
     while(this.peekToken()?.type === 'OPERATOR') {
       const opToken = this.takeToken()
-      const right = this.parsePrimaryExpr()
+      const right = this.parseUnaryExpr()
       if (!right) {
         throw new Error(`parse error after ${opToken.val}`)
       }
@@ -163,6 +173,20 @@ export class Parser {
     return left
   }
 
+  private parseUnaryExpr(): nodes.Expression | undefined {
+    const operator = this.peekToken()
+    if(operator && isUnary(operator)) {
+      this.takeToken()
+      const expr = this.parsePrimaryExpr()
+      if(!expr) {
+        throw new Error(`Expected expression after unary operator '${operator.val}'`)
+      }
+      return new nodes.UnaryExpression(operator, expr)
+    }
+
+    return this.parsePrimaryExpr()
+  }
+
   private parsePrimaryExpr(): nodes.Expression | undefined {
     // Primary expressions
     const simple = this.parseFunctionCall() ||
@@ -172,6 +196,10 @@ export class Parser {
       return simple
     }
 
+    return this.parseParentesiszedExpr()
+  }
+
+  private parseParentesiszedExpr(): nodes.Expression | undefined {
     if (this.peekToken()?.type !== '(') {
       return undefined
     }
@@ -215,43 +243,6 @@ export class Parser {
   private parseExpression(noBinary?: boolean): nodes.Node | undefined {
     return this.parseBinaryExpr()
   }
-
-  // private parseBinaryOperation(): nodes.BinaryOperation | undefined {
-  //   const state = this.cloneState()
-  //   this.state.skipNewline = true
-  //   const left : nodes.Expression | undefined = this.parseExpression(true)
-  //   if (!left) {
-  //     this.state = state
-  //     return undefined
-  //   }
-  //   const op = this.parseOperator()
-  //   if (!op) {
-  //     this.state = state
-  //     return undefined
-  //   }
-  //   const right : nodes.Expression | undefined = this.parseExpression()
-  //   if (!right) {
-  //     throw new Error(`Expected to find an expression after '${op.val}'`)
-  //   }
-
-  //   this.state.skipNewline = false
-
-  //   // We are building right-slanted tree here, our left side will always be
-  //   // an Expression, but right side may be a BinaryExpression.
-  //   const pri = operatorPriority[op.val] ?? 0
-  //   if (right instanceof nodes.BinaryOperation && !right.parenthesized) {
-  //     const rightPri = operatorPriority[right.operator.val] ?? 0
-  //     if (pri > rightPri) {
-  //       // Rotate tree if operator on the right side has lower priority.
-  //       // E.g. we are * but we get + on the right side.
-  //       const newRight = right.right
-  //       const newLeft = new nodes.BinaryOperation(left, op, right.left)
-  //       return new nodes.BinaryOperation(newLeft, right.operator, newRight)
-  //     }
-  //   }
-
-  //   return new nodes.BinaryOperation(left, op, right)
-  // }
 
   private parseBlock() {
     return this.parseExpression()

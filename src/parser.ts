@@ -12,6 +12,7 @@ interface ParserState {
   pos: number
   skipNewline: number
   inFCall: boolean
+  inFCallImplicitArgs: number // trying to descend into function call without parentheses
 }
 
 function isUnary(token: Token): boolean {
@@ -34,11 +35,16 @@ export class Parser {
       pos: 0,
       skipNewline: 0,
       inFCall: false,
+      inFCallImplicitArgs: 0,
     }
   }
 
   private cloneState(): ParserState {
     return { ...this.state }
+  }
+
+  private peekWhitespace(): boolean {
+    return ['WHITESPACE', 'NEWLINE'].includes(this.tokens[this.state.pos]?.type)
   }
 
   private peekToken(): Token | undefined {
@@ -131,6 +137,14 @@ export class Parser {
       }
       return new nodes.FunctionCall(target, args)
     } else {
+      // Implicit function call without parentheses.
+      if(!this.peekWhitespace()) {
+        // Requires a whitespace before first argument, so something like 'a+b'
+        // is not parsed as 'a(+b)'.
+        this.state = state
+        return undefined
+      }
+      this.state.inFCallImplicitArgs++
       const firstArg = this.parseExpression()
       if(!firstArg) {
         this.state = state
@@ -147,6 +161,7 @@ export class Parser {
         args.push(arg)
         // this.state.skipNewline--
       }
+      this.state.inFCallImplicitArgs--
       return new nodes.FunctionCall(target, args)
     }
   }
@@ -177,6 +192,13 @@ export class Parser {
     const operator = this.peekToken()
     if(operator && isUnary(operator)) {
       this.takeToken()
+      if (this.state.inFCallImplicitArgs > 0 && this.peekWhitespace()) {
+        // In expression like 'a - b', do not consider '- b' to be an unary
+        // expression, because then we would end up parsing it as 'a(-b)'.
+        //
+        // However', 'a -b' should actually be parsed as 'a(-b)'.
+        return undefined
+      }
       const expr = this.parsePrimaryExpr()
       if(!expr) {
         throw new Error(`Expected expression after unary operator '${operator.val}'`)

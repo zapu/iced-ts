@@ -138,7 +138,7 @@ export class FunctionCall extends Expression {
   }
 
   debugEmitCommon() {
-    return `${this.target.debugEmitCommon()}(${this.args.map(x => x.debugEmitCommon()).join(', ')})`
+    return `${this.target.debugEmitCommon()}(${this.args.map(x => x.debugEmitCommon()).join(',')})`
   }
 }
 

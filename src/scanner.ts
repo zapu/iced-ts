@@ -152,7 +152,7 @@ export class Scanner {
     }
 
     public scan(): Token[] {
-        console.log(this.contents)
+        // console.log(this.contents)
 
         this.chunk = this.contents
 

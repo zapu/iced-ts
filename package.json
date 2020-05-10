@@ -2,7 +2,8 @@
   "name": "iced-ts",
   "description": "Iced compiler and library in TypeScript",
   "scripts": {
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "test": "ts-node -T src/test/parser_test.ts"
   },
   "dependencies": {
     "typescript": "^3.8.3"

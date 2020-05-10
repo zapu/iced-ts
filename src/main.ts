@@ -1,32 +1,50 @@
-import {Scanner} from './scanner'
-import {Parser} from './parser'
+import { Scanner } from './scanner'
+import { Parser } from './parser'
 import * as util from 'util'
 
-// const contents = `
-// (1 + 2) * ((3 + 1) / 4)
+async function main() {
+  let contents = ""
+  process.stdin.on('data', (data) => {
+    contents += data.toString()
+  })
 
-// foo = ->
-//   return 1
-// `
+  await new Promise((resolve, reject) => {
+    process.stdin.on('close', (had_error) => {
+      if (had_error) {
+        reject()
+      } else {
+        resolve()
+      }
+    })
+  })
 
-// const contents = `(1 + 2) * 3 * 4 * 5 + 6 + 7 / 8`
-// const contents = `0 * (1 + 2) * 3 == (func + 2)()`
-// const contents = `(1  + 2) * 3 * 4`
-// const contents = `1 + 2 * 3`
-const contents = `1 - 2`
+  console.log('input:')
+  console.log(contents)
 
-const scanner = new Scanner()
-scanner.reset(contents)
-const tokens = scanner.scan()
-console.log(tokens)
+  const scanner = new Scanner()
+  scanner.reset(contents)
+  const tokens = scanner.scan()
+  console.log('tokens:')
+  console.log(tokens)
 
-const parser = new Parser()
-parser.reset(tokens)
-const nodes = parser.parse()
+  const parser = new Parser()
+  parser.reset(tokens)
+  const nodes = parser.parse()
 
-console.log(util.inspect(nodes, false, null))
+  console.log('nodes (inspect):')
+  console.log(util.inspect(nodes, false, null))
 
-console.log(nodes?.emit())
+  console.log('emit:')
+  console.log(nodes?.emit())
 
-console.log('evalMath:',nodes?.debugEvalJS())
-console.log('eval:',eval(contents))
+  console.log('common:', nodes?.debugEmitCommon())
+  console.log('evalMath:', nodes?.debugEvalJS())
+  console.log('eval:', eval(contents))
+}
+
+main().then(() => {
+  process.exit(0)
+}).catch((reason) => {
+  console.error('error:', reason)
+  process.exit(1)
+})

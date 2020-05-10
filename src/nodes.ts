@@ -5,6 +5,8 @@ export abstract class Node {
   // tokens: Token[] = []
   abstract emit(): string
   abstract debugEvalJS(): any
+
+  abstract debugEmitCommon(): string
 }
 
 export class Parens extends Node {
@@ -21,6 +23,10 @@ export class Parens extends Node {
 
   debugEvalJS() {
     return this.contents.debugEvalJS()
+  }
+
+  debugEmitCommon() {
+    return `(${this.contents.debugEmitCommon()})`
   }
 }
 
@@ -41,6 +47,10 @@ export class Number extends Expression {
   debugEvalJS() {
     return parseInt(this.content)
   }
+
+  debugEmitCommon() {
+    return this.content
+  }
 }
 
 export class Identifier extends Expression {
@@ -56,6 +66,10 @@ export class Identifier extends Expression {
 
   debugEvalJS(): number {
     throw new Error(`Invalid evalMath on ${this.content}`)
+  }
+
+  debugEmitCommon() {
+    return this.content
   }
 }
 
@@ -95,6 +109,10 @@ export class BinaryExpression extends Expression {
         throw new Error(`Don't know how to evalJS with ${this.operator.val}`)
     }
   }
+
+  debugEmitCommon() {
+    return `${this.left.debugEmitCommon()} ${this.operator.val} ${this.right.debugEmitCommon()}`
+  }
 }
 
 export abstract class Operation extends Expression {
@@ -118,6 +136,10 @@ export class FunctionCall extends Expression {
   debugEvalJS(): number {
     throw new Error(`Invalid evalMath on ${this.emit()}`)
   }
+
+  debugEmitCommon() {
+    return `${this.target.debugEmitCommon()}(${this.args.map(x => x.debugEmitCommon()).join(', ')})`
+  }
 }
 
 export class UnaryExpression extends Expression {
@@ -135,7 +157,18 @@ export class UnaryExpression extends Expression {
   }
 
   debugEvalJS(): number {
-    throw new Error(`Invalid evalMath on ${this.emit()}`)
+    switch(this.operator.val) {
+      case '+':
+        return this.expression.debugEvalJS()
+      case '-':
+        return -this.expression.debugEvalJS()
+      default:
+        throw new Error(`Invalid evalMath on ${this.emit()}`)
+    }
+  }
+
+  debugEmitCommon() {
+    return `${this.operator.val}${this.expression.debugEmitCommon()}`
   }
 }
 

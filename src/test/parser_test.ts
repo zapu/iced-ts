@@ -67,6 +67,12 @@ const tests: TestCase[] = [
   { input: 'foo(2)', expected: 'foo(2)' },
   { input: 'foo(2, 3, 4)', expected: 'foo(2,3,4)' },
 
+  { input: '(foo 2, 3, 4)', expected: '(foo(2,3,4))' },
+  { input: '(foo)(2)', expected: '(foo)(2)' },
+  { input: '(foo) 2', expected: '(foo)(2)' },
+  { input: '(foo) (2)', expected: '(foo)(2)' },
+  { input: '(foo) (a b)', expected: '(foo)(a(b))' },
+  { input: '(foo) (a, b)', expected: '(foo)(a,b)' },
 ]
 
 if (runAll(tests)) {

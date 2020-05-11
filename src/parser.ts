@@ -11,7 +11,7 @@ const operatorPriority : {[k: string]: number}= {
 interface ParserState {
   pos: number
   skipNewline: number
-  inFCall: boolean
+  inFCall: 0
   inFCallImplicitArgs: number // trying to descend into function call without parentheses
 }
 
@@ -34,7 +34,7 @@ export class Parser {
     this.state = {
       pos: 0,
       skipNewline: 0,
-      inFCall: false,
+      inFCall: 0,
       inFCallImplicitArgs: 0,
     }
   }
@@ -101,13 +101,13 @@ export class Parser {
     const state = this.cloneState()
     // Do not recurse on function call rule, we handle chained calls through a
     // loop in the rule itself.
-    this.state.inFCall = true
+    this.state.inFCall++
     const target = this.parseIdentifier() ?? this.parseParentesiszedExpr()
     if (!target) {
       this.state = state
       return undefined
     }
-    this.state.inFCall = false
+    this.state.inFCall--
 
     const nextToken = this.peekToken()
     if (nextToken?.type === '(') {
@@ -231,7 +231,7 @@ export class Parser {
       throw new Error("Expected expression after (")
     }
     if (this.takeToken()?.type !== ')') {
-      if (this.state.inFCall) {
+      if (this.state.inFCall > 0) {
         // We might have gotten here because we are parsing something like:
         //   `(func_foo 1, 2, 3)`
         //

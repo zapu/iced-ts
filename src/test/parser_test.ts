@@ -84,10 +84,16 @@ const tests: TestCase[] = [
   { input: '(foo) (a b)', expected: '(foo)(a(b))' },
   { input: '(foo) (a, b)', expected: '(foo)(a,b)' },
 
-  // Recursive function calls (target is a function call)
+  // Recursive or chained function calls (target is a function call)
   { input: '(foo())(3)', expected: '(foo())(3)' },
   { input: '(foo(2))(3)', expected: '(foo(2))(3)' },
   { input: '(foo(2)) 3', expected: '(foo(2))(3)' },
+
+  { input: 'foo(1)(2)', expected: 'foo(1)(2)' },
+
+  // Combined function calls and arithmetic
+  { input: 'foo(2) + 3', expected: 'foo(2) + 3' },
+  { input: 'foo (2) + 3', expected: 'foo(2) + 3' },
 ]
 
 if (runAll(tests)) {

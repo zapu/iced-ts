@@ -43,14 +43,19 @@ function runAll(tests: TestCase[]) {
 
 const tests: TestCase[] = [
   // Implicit function calls, without parentheses
-  { input: '1 + 2', expected: '1 + 2' },
-  { input: '1 +2', expected: '1(+2)' },
+  // TODO: iced2/3 compilers will parse differently when function call
+  // target is not an identifier, so these tests will have to be redone,
+  // because '1 +2' should actually parse as '1 + 2' instead of '1(+2)'.
+  { input: '1 + 2', expected: '1 + 2' }, // not a function call
+  { input: '1 +2', expected: '1(+2)' }, // but this one is a function call
   { input: '1 -2', expected: '1(-2)' },
   { input: '1 2', expected: '1(2)' },
   { input: 'foo +2, 3', expected: 'foo(+2,3)' },
 
   // Nested implicit function calls
   { input: 'foo +2, b 3', expected: 'foo(+2,b(3))' },
+  { input: 'foo +2, b +3', expected: 'foo(+2,b(+3))' },
+  { input: 'foo +2, b +3 | 0', expected: 'foo(+2,b(+3 | 0))' },
   { input: 'foo a b c', expected: 'foo(a(b(c)))' },
 
   // Other function calls

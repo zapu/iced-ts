@@ -105,7 +105,7 @@ export class Parser {
     // Do not recurse on function call rule, we handle chained calls through a
     // loop in the rule itself.
     this.state.inFCall = true
-    const target = this.parsePrimaryExpr()
+    const target = this.parseIdentifier() ?? this.parseParentesiszedExpr()
     if (!target) {
       this.state = state
       return undefined
@@ -211,8 +211,8 @@ export class Parser {
 
   private parsePrimaryExpr(): nodes.Expression | undefined {
     // Primary expressions
-    const simple = this.parseFunctionCall() ||
-      this.parseNumber() ||
+    const simple = this.parseFunctionCall() ??
+      this.parseNumber() ??
       this.parseIdentifier()
     if(simple) {
       return simple

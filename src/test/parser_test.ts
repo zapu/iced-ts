@@ -42,6 +42,11 @@ function runAll(tests: TestCase[]) {
 }
 
 const tests: TestCase[] = [
+  // Math
+  { input: '1 + 2 * 3', expected: '1 + 2 * 3' },
+  { input: '(1 + 2) * 3', expected: '(1 + 2) * 3' },
+  { input: '1 * 2 + 3', expected: '1 * 2 + 3' },
+
   // Implicit function calls, without parentheses
   // TODO: iced2/3 compilers will parse differently when function call
   // target is not an identifier, so these tests will have to be redone,

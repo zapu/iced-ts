@@ -98,9 +98,6 @@ export class Parser {
   }
 
   private parseFunctionCall(): nodes.FunctionCall | undefined {
-    if (this.state.inFCall) {
-      return undefined
-    }
     const state = this.cloneState()
     // Do not recurse on function call rule, we handle chained calls through a
     // loop in the rule itself.

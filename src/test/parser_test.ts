@@ -11,6 +11,9 @@ function runAll(tests: TestCase[]) {
   let success = true
   for (const test of tests) {
     try {
+      const inputCon = test.input.replace('\n', '\\n')
+      // console.log(`...: ${inputCon}`)
+
       // TODO: Potential optimization, can create Scanner and Parser once and
       // only call `reset` on them in each test.
       const scanner = new Scanner()
@@ -22,8 +25,6 @@ function runAll(tests: TestCase[]) {
       const nodes = parser.parse()
 
       const commonEmit = nodes?.debugEmitCommon()
-
-      const inputCon = test.input.replace('\n', '\\n')
 
       if (test.expected !== commonEmit) {
         console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got '${commonEmit}'`)
@@ -90,6 +91,10 @@ const tests: TestCase[] = [
   { input: '(foo(2)) 3', expected: '(foo(2))(3)' },
 
   { input: 'foo(1)(2)', expected: 'foo(1)(2)' },
+  { input: 'foo(1) +3', expected: 'foo(1)(+3)' },
+  { input: 'foo bar baz 1', expected: 'foo(bar(baz(1)))' },
+  { input: 'foo(1)(func 2)', expected: 'foo(1)(func(2))' },
+  { input: 'foo(1)(func 2)(func 3, 4)', expected: 'foo(1)(func(2))(func(3,4))' },
 
   // Combined function calls and arithmetic
   { input: 'foo(2) + 3', expected: 'foo(2) + 3' },

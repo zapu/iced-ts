@@ -1,7 +1,7 @@
-import {Token, isTrivia} from './scanner'
+import { Token, isTrivia } from './scanner'
 import * as nodes from './nodes'
 
-const operatorPriority : {[k: string]: number}= {
+const operatorPriority: { [k: string]: number } = {
   '+': 50,
   '-': 50,
   '*': 100,
@@ -48,29 +48,33 @@ export class Parser {
   }
 
   private peekToken(): Token | undefined {
-    for(let i = this.state.pos; i < this.tokens.length; i++) {
+    for (let i = this.state.pos; i < this.tokens.length; i++) {
       const token = this.tokens[i]
-      if(this.state.skipNewline && token.type === 'NEWLINE') {
+      if (this.state.skipNewline && token.type === 'NEWLINE') {
         continue
       }
-      if(!isTrivia(token.type)) {
+      if (!isTrivia(token.type)) {
         return token
       }
     }
   }
 
   private takeToken(): Token {
-    while(this.state.pos < this.tokens.length) {
+    while (this.state.pos < this.tokens.length) {
       const token = this.tokens[this.state.pos]
       this.state.pos++
-      if(this.state.skipNewline && token.type === 'NEWLINE') {
+      if (this.state.skipNewline && token.type === 'NEWLINE') {
         continue
       }
-      if(!isTrivia(token.type)) {
+      if (!isTrivia(token.type)) {
         return token
       }
     }
     throw new Error("Ran out of tokens")
+  }
+
+  private returnToken(): void {
+    this.state.pos--
   }
 
   private parseNumber() {
@@ -109,66 +113,83 @@ export class Parser {
     }
     this.state.inFCall--
 
-    const nextToken = this.peekToken()
-    if (nextToken?.type === '(') {
-      this.takeToken()
-      this.state.skipNewline++
-      const args : nodes.Expression[] = []
-      const firstArg = this.parseExpression()
-      if (firstArg) {
-        args.push(firstArg)
-        while(this.peekToken()?.type === ',') {
+    let ret: nodes.FunctionCall | undefined
+    const chainFCall = (args: nodes.Expression[]) => {
+      if (!ret) {
+        ret = new nodes.FunctionCall(target, args)
+      } else {
+        ret = new nodes.FunctionCall(ret, args)
+      }
+    }
+
+    while (true) {
+      const nextToken = this.peekToken()
+      if (nextToken?.type === '(') {
+        this.takeToken()
+        this.state.skipNewline++
+        const args: nodes.Expression[] = []
+        const firstArg = this.parseExpression()
+        if (firstArg) {
+          args.push(firstArg)
+          while (this.peekToken()?.type === ',') {
+            this.takeToken()
+            const arg = this.parseExpression()
+            if (!arg) {
+              throw new Error("Expected an expression after ',' in function call")
+            }
+            args.push(arg)
+          }
+        }
+        if (this.takeToken()?.type !== ')') {
+          throw new Error('Expected ) in function call')
+        }
+        if (--this.state.skipNewline < 0) {
+          throw new Error("internal: skipNewline mismatch")
+        }
+        chainFCall(args)
+      } else {
+        // Implicit function call without parentheses.
+        if (!this.peekWhitespace()) {
+          // Requires a whitespace before first argument, so something like 'a+b'
+          // is not parsed as 'a(+b)'.
+          break
+        }
+        this.state.inFCallImplicitArgs++
+        const firstArg = this.parseExpression()
+        if (!firstArg) {
+          this.state.inFCallImplicitArgs--
+          break
+        }
+        const args = [firstArg]
+        while (this.peekToken()?.type === ',') {
+          // this.state.skipNewline++
           this.takeToken()
           const arg = this.parseExpression()
-          if(!arg) {
+          if (!arg) {
             throw new Error("Expected an expression after ',' in function call")
           }
           args.push(arg)
+          // this.state.skipNewline--
         }
+        this.state.inFCallImplicitArgs--
+        chainFCall(args)
       }
-      if (this.takeToken()?.type !== ')') {
-        throw new Error('Expected ) in function call')
-      }
-      if (--this.state.skipNewline < 0) {
-        throw new Error("internal: skipNewline mismatch")
-      }
-      return new nodes.FunctionCall(target, args)
-    } else {
-      // Implicit function call without parentheses.
-      if(!this.peekWhitespace()) {
-        // Requires a whitespace before first argument, so something like 'a+b'
-        // is not parsed as 'a(+b)'.
-        this.state = state
-        return undefined
-      }
-      this.state.inFCallImplicitArgs++
-      const firstArg = this.parseExpression()
-      if(!firstArg) {
-        this.state = state
-        return undefined
-      }
-      const args = [firstArg]
-      while(this.peekToken()?.type === ',') {
-        // this.state.skipNewline++
-        this.takeToken()
-        const arg = this.parseExpression()
-        if(!arg) {
-          throw new Error("Expected an expression after ',' in function call")
-        }
-        args.push(arg)
-        // this.state.skipNewline--
-      }
-      this.state.inFCallImplicitArgs--
-      return new nodes.FunctionCall(target, args)
     }
+
+    if (!ret) {
+      // We didn't parse anything - restore state and return undefined.
+      this.state = state
+      return undefined
+    }
+    return ret
   }
 
   private parseBinaryExpr(): nodes.Expression | undefined {
     let left = this.parseUnaryExpr()
-    if(!left) {
+    if (!left) {
       return undefined
     }
-    while(this.peekToken()?.type === 'OPERATOR') {
+    while (this.peekToken()?.type === 'OPERATOR') {
       const opToken = this.takeToken()
       const right = this.parseUnaryExpr()
       if (!right) {
@@ -187,17 +208,18 @@ export class Parser {
 
   private parseUnaryExpr(): nodes.Expression | undefined {
     const operator = this.peekToken()
-    if(operator && isUnary(operator)) {
+    if (operator && isUnary(operator)) {
       this.takeToken()
       if (this.state.inFCallImplicitArgs > 0 && this.peekWhitespace()) {
         // In expression like 'a - b', do not consider '- b' to be an unary
         // expression, because then we would end up parsing it as 'a(-b)'.
         //
         // However', 'a -b' should actually be parsed as 'a(-b)'.
+        this.returnToken()
         return undefined
       }
       const expr = this.parsePrimaryExpr()
-      if(!expr) {
+      if (!expr) {
         throw new Error(`Expected expression after unary operator '${operator.val}'`)
       }
       return new nodes.UnaryExpression(operator, expr)
@@ -211,7 +233,7 @@ export class Parser {
     const simple = this.parseFunctionCall() ??
       this.parseNumber() ??
       this.parseIdentifier()
-    if(simple) {
+    if (simple) {
       return simple
     }
 

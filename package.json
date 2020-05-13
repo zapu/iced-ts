@@ -6,7 +6,7 @@
     "test": "ts-node -T src/test/parser_test.ts"
   },
   "dependencies": {
-    "typescript": "^3.8.3"
+    "typescript": "3.9.2"
   },
   "devDependencies": {
     "@types/node": "^13.11.0",

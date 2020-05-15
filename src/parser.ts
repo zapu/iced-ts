@@ -206,6 +206,26 @@ export class Parser {
     return left
   }
 
+  private parseAssign(): nodes.Assign | undefined {
+    const state = this.cloneState()
+    const target = this.parseIdentifier()
+    if (!target) {
+      return undefined
+    }
+    if (this.peekToken()?.type !== '=') {
+      this.state = state
+      return undefined
+    }
+    const operator = this.takeToken()
+
+    const value = this.parseExpression()
+    if(!value) {
+      throw new Error("Unexpected expression after assignment operator")
+    }
+
+    return new nodes.Assign(target, value)
+  }
+
   private parseUnaryExpr(): nodes.Expression | undefined {
     const operator = this.peekToken()
     if (operator && isUnary(operator)) {
@@ -231,6 +251,7 @@ export class Parser {
   private parsePrimaryExpr(): nodes.Expression | undefined {
     // Primary expressions
     const simple = this.parseFunctionCall() ??
+      this.parseAssign() ??
       this.parseNumber() ??
       this.parseIdentifier()
     if (simple) {

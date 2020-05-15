@@ -119,6 +119,27 @@ export abstract class Operation extends Expression {
 
 }
 
+export class Assign extends Expression {
+  target: Expression
+  value: Expression
+
+  constructor(target: Expression, value: Expression) {
+    super()
+    this.target = target
+    this.value = value
+  }
+
+  emit(): string {
+    return `${this.target.emit()} = ( ${this.value.emit()} )`
+  }
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+  debugEmitCommon(): string {
+    return `${this.target.debugEmitCommon()} = ${this.value.debugEmitCommon()}`
+  }
+}
+
 export class FunctionCall extends Expression {
   target: Expression
   args: Expression[]
@@ -176,11 +197,18 @@ export class Block extends Node {
   expressions: Expression[] = []
 
   emit(): string {
+    return this.expressions
+      .map(x => x.emit())
+      .join('\n')
+  }
+
+  debugEvalJS(): number {
+    if (this.expressions.length === 1) {
+      return this.expressions[0].debugEvalJS()
+    }
     throw new Error("Method not implemented.")
   }
-  debugEvalJS() {
-    throw new Error("Method not implemented.")
-  }
+
   debugEmitCommon(): string {
     return this.expressions
       .map(x => x.debugEmitCommon())

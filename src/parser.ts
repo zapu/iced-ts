@@ -11,8 +11,15 @@ const operatorPriority: { [k: string]: number } = {
 interface ParserState {
   pos: number
   skipNewline: number
-  inFCall: 0
+  inFCall: number
   inFCallImplicitArgs: number // trying to descend into function call without parentheses
+
+  // Are we parsing a parenthesized expression right now? It changes some
+  // behavior i.e. during block parsing - which can end with close-paren, like:
+  // setTimeout (-> hello(); world()), 10
+  inParens: number
+
+  indentStack: number[]
 }
 
 function isUnary(token: Token): boolean {
@@ -36,6 +43,9 @@ export class Parser {
       skipNewline: 0,
       inFCall: 0,
       inFCallImplicitArgs: 0,
+      inParens: 0,
+
+      indentStack: [],
     }
   }
 
@@ -250,6 +260,8 @@ export class Parser {
     if (this.peekToken()?.type === '(') {
       this.takeToken()
 
+      this.state.inParens++
+
       if (this.peekToken()?.type !== ')') {
         const firstArg = this.parseFunctionParam()
         if (!firstArg) {
@@ -282,6 +294,8 @@ export class Parser {
       } else {
         this.takeToken()
       }
+
+      this.state.inParens--
     } else {
       if (this.state.inFCallImplicitArgs) {
         this.state = state
@@ -350,6 +364,9 @@ export class Parser {
     this.takeToken()
     // Found parentesiszed expression, start skipping newline.
     this.state.skipNewline++
+    // And parsing coming from this point has to be aware that we are in the
+    // middle of parentheses.
+    this.state.inParens++
     const expr = this.parseExpression()
     if (!expr) {
       this.state = state
@@ -381,9 +398,8 @@ export class Parser {
       }
       throw new Error(`Unexpected '${next?.val}' after expression, expected ')'`)
     }
-    if (--this.state.skipNewline < 0) {
-      throw new Error("internal: skipNewline mismatch")
-    }
+    this.state.skipNewline--
+    this.state.inParens--
     return new nodes.Parens(expr)
   }
 
@@ -392,28 +408,127 @@ export class Parser {
   }
 
   private parseBlock() {
+    const state = this.cloneState()
     const block = new nodes.Block()
-    // Skip initial newlines
-    while (this.peekToken()?.type === 'NEWLINE') {
-      this.takeToken()
+
+    // The block can't start inline with previous block and continue on the
+    // subsequent lines, like follows:
+    //
+    // foo = -> hello()
+    //   world()
+    //
+    // This is invalid and would fail with "unexpected identation" on second
+    // line.
+
+    // Some block syntax that should work:
+    //
+    // foo (-> hello()), 10
+    //
+    // this.state.inParens helps with it, signifying that we can stop on
+    // closing parenthesis without error.
+
+    const lastIndent = this.state.indentStack[this.state.indentStack.length - 1] as number | undefined
+    const rootBlock = lastIndent === undefined
+
+    if (rootBlock || this.peekToken()?.type === 'NEWLINE') {
+      let blockIndent: number | undefined = undefined;
+      for (; ;) {
+        const lineStartPos = this.state.pos
+
+        let lineIndent = 0;
+        while(this.state.pos < this.tokens.length) {
+          const cur = this.tokens[this.state.pos]
+          if (cur.type === 'WHITESPACE') {
+            lineIndent += cur.val.length
+          } else if (cur.type === 'NEWLINE') {
+            // We got a newline while counting indents for current line, reset
+            // indent counter and try again for the next line. Empty lines with
+            // random indents are fine and do not interrupt block flow.
+            lineIndent = 0;
+          } else if (cur.type === 'COMMENT') {
+            // Just skip over comments for now.
+          } else {
+            // We found something else than WHITESPACE, NEWLINE or trivia -
+            // we know how indented it is and we can start parsing.
+            break
+          }
+
+          this.state.pos++
+        }
+
+        if (this.state.pos === this.tokens.length) {
+          // We ran out of tokens.
+          return block
+        }
+
+        if (blockIndent === undefined) {
+          blockIndent = lineIndent
+          if (!rootBlock && lineIndent === lastIndent) {
+            // empty block, we immediately indented back to previous block
+            // indentation.
+            this.state = state
+            return undefined
+          }
+
+          this.state.indentStack = [...this.state.indentStack, blockIndent]
+        } else {
+          if(lineIndent < blockIndent) {
+            // end of block
+            this.state.pos = lineStartPos
+            break
+          }
+        }
+
+        const expr = this.parseExpression()
+        if (!expr) {
+          break
+        }
+        block.expressions.push(expr)
+
+        const separator = this.peekToken()
+        if (!separator) {
+          break
+        } else if (separator.type !== 'NEWLINE') {
+          throw new Error(`Unexpected after expression: ${separator.val}`);
+        }
+      }
+
+      if (!rootBlock) {
+        // Restore indent stack
+        this.state.indentStack = this.state.indentStack.slice(0, -1)
+      }
+    } else if (this.peekToken()) {
+      // anything else (that exists!)
+      loop: for (; ;) {
+        const expr = this.parseExpression()
+        if (!expr) {
+          if (this.state.inParens) {
+            return block
+          }
+          throw new Error(`Expected an expression`)
+        }
+
+        block.expressions.push(expr)
+        switch (this.peekToken()?.type) {
+          case 'NEWLINE': // end of line
+          case undefined: // end of file
+            break loop
+          case ';':
+            this.takeToken()
+            continue
+          case ')':
+            if (this.state.inParens) {
+              break loop
+            } else {
+              throw new Error(`Unexpected ${this.peekToken()?.val}`)
+            }
+            break
+          default:
+            throw new Error(`Unexpected ${this.peekToken()?.val}`)
+        }
+      }
     }
 
-    for (; ;) {
-      const expr = this.parseExpression()
-      if (!expr) {
-        break
-      }
-      block.expressions.push(expr)
-
-      const separator = this.peekToken()
-      if (!separator) {
-        break
-      } else if (separator.type !== 'NEWLINE') {
-        throw new Error(`Unexpected after expression: ${separator.val}`);
-      } else {
-        this.takeToken()
-      }
-    }
     return block
   }
 

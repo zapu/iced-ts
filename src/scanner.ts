@@ -7,7 +7,7 @@ export type TokenType = 'BLOCK_START' | 'BLOCK_END' |
     'IDENTIFIER' | 'NUMBER' | 'COMMENT' | 'NEWLINE' |
     'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' | `,` |
     'CLASS' | 'RETURN' | 'IF' | 'UNLESS' | '(' | ')'|
-    'UNARY' | 'UNARY_MATH' | 'BUILTIN_PRIMARY'
+    ';' | 'UNARY' | 'UNARY_MATH' | 'BUILTIN_PRIMARY'
 
 const commonTokens : {[str: string]: TokenType} = {
     '->': 'FUNC',
@@ -41,6 +41,7 @@ const commonTokens : {[str: string]: TokenType} = {
     '(': '(',
     ')': ')',
     ',': ',',
+    ';': ';',
 
     '!': 'UNARY_MATH',
     '~': 'UNARY_MATH',

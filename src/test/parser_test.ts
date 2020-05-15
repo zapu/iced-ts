@@ -11,7 +11,7 @@ function runAll(tests: TestCase[]) {
   let success = true
   for (const test of tests) {
     try {
-      const inputCon = test.input.replace('\n', '\\n')
+      const inputCon = test.input.replace(/\n/g, '⏎')
       // console.log(`...: ${inputCon}`)
 
       // TODO: Potential optimization, can create Scanner and Parser once and
@@ -110,6 +110,10 @@ const tests: TestCase[] = [
   { input: 'foo = (a = 1, b = 2) ->', expected: 'foo = (a=1,b=2) -> {}' },
   { input: 'foo = (a=1, b) ->', expected: 'foo = (a=1,b) -> {}' },
   { input: 'foo = (bar = () =>) ->', expected: 'foo = (bar=() => {}) -> {}' },
+
+  // Blocks
+  { input: 'foo = () ->\n  hello()\nhi()', expected: 'foo = () -> {hello()};hi()' },
+  { input: 'foo = ->\n  hi = ->\n    a()\n', expected: 'foo = () -> {hi = () -> {a()}}' },
 ]
 
 if (runAll(tests)) {

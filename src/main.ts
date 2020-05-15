@@ -34,10 +34,11 @@ async function main() {
   console.log('nodes (inspect):')
   console.log(util.inspect(nodes, false, null))
 
+  console.log('common:', nodes?.debugEmitCommon())
+
   console.log('emit:')
   console.log(nodes?.emit())
 
-  console.log('common:', nodes?.debugEmitCommon())
   console.log('evalMath:', nodes?.debugEvalJS())
   console.log('eval:', eval(contents))
 }

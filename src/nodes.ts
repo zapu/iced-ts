@@ -140,6 +140,43 @@ export class Assign extends Expression {
   }
 }
 
+export interface FunctionParam {
+  param: Identifier
+  defaultValue?: Expression
+}
+
+export class Function extends Expression {
+  args: FunctionParam[]
+  body: Block
+  bindThis: boolean
+
+  constructor(args: FunctionParam[], body: Block, bindThis: boolean) {
+    super()
+    this.args = args
+    this.body = body
+    this.bindThis = bindThis
+  }
+
+  emit(): string {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    const argList = this.args.map((x) => {
+      if (x.defaultValue) {
+        return `${x.param.debugEmitCommon()}=${x.defaultValue.debugEmitCommon()}`
+      } else {
+        return x.param.debugEmitCommon()
+      }
+    })
+    return `(${argList.join(',')}) ${this.bindThis ? '=>' : '->'} {${this.body.debugEmitCommon()}}`
+  }
+}
+
 export class FunctionCall extends Expression {
   target: Expression
   args: Expression[]

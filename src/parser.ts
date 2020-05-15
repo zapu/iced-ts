@@ -219,11 +219,93 @@ export class Parser {
     const operator = this.takeToken()
 
     const value = this.parseExpression()
-    if(!value) {
+    if (!value) {
       throw new Error("Unexpected expression after assignment operator")
     }
 
     return new nodes.Assign(target, value)
+  }
+
+  private parseFunctionParam(): nodes.FunctionParam | undefined {
+    const param = this.parseIdentifier() // TODO: Or object literal, or array literal
+    if (!param) {
+      return undefined
+    }
+
+    const state = this.cloneState()
+    let defaultValue
+    if (this.peekToken()?.type === '=') {
+      this.takeToken()
+      defaultValue = this.parseExpression()
+      if (!defaultValue) {
+        this.state = state
+        return undefined
+      }
+    }
+
+    return { param, defaultValue }
+  }
+
+  private parseFunction(): nodes.Function | undefined {
+    const state = this.cloneState()
+
+    const argList: nodes.FunctionParam[] = []
+    if (this.peekToken()?.type === '(') {
+      this.takeToken()
+
+      if (this.peekToken()?.type !== ')') {
+        const firstArg = this.parseFunctionParam()
+        if (!firstArg) {
+          this.state = state
+          return undefined
+        }
+
+        argList.push(firstArg)
+
+        while (true) {
+          if (this.peekToken()?.type !== ',') {
+            break
+          }
+          this.takeToken()
+
+          const param = this.parseFunctionParam()
+          if (!param) {
+            this.state = state
+            return undefined
+          }
+          argList.push(param)
+        }
+
+        if (this.peekToken()?.type !== ')') {
+          this.state = state
+          return undefined
+        }
+
+        this.takeToken()
+      } else {
+        this.takeToken()
+      }
+    } else {
+      if (this.state.inFCallImplicitArgs) {
+        this.state = state
+        return undefined
+      }
+    }
+
+    if (this.peekToken()?.type !== 'FUNC') {
+      this.state = state
+      return undefined
+    }
+
+    const funcToken = this.takeToken()
+    const bindThis = funcToken.val === '=>'
+
+    let body = this.parseBlock()
+    if(!body) {
+      body = new nodes.Block()
+    }
+
+    return new nodes.Function(argList, body, bindThis)
   }
 
   private parseUnaryExpr(): nodes.Expression | undefined {
@@ -253,7 +335,9 @@ export class Parser {
     const simple = this.parseFunctionCall() ??
       this.parseAssign() ??
       this.parseNumber() ??
-      this.parseIdentifier()
+      this.parseIdentifier() ??
+      this.parseFunction()
+
     if (simple) {
       return simple
     }
@@ -271,7 +355,8 @@ export class Parser {
     this.state.skipNewline++
     const expr = this.parseExpression()
     if (!expr) {
-      throw new Error("Expected expression after (")
+      this.state = state
+      return undefined
     }
     if (this.takeToken()?.type !== ')') {
       if (this.state.inFCall > 0) {
@@ -309,19 +394,19 @@ export class Parser {
   private parseBlock() {
     const block = new nodes.Block()
     // Skip initial newlines
-    while(this.peekToken()?.type === 'NEWLINE') {
+    while (this.peekToken()?.type === 'NEWLINE') {
       this.takeToken()
     }
 
-    for(;;) {
+    for (; ;) {
       const expr = this.parseExpression()
-      if(!expr) {
+      if (!expr) {
         break
       }
       block.expressions.push(expr)
 
       const separator = this.peekToken()
-      if(!separator) {
+      if (!separator) {
         break
       } else if (separator.type !== 'NEWLINE') {
         throw new Error(`Unexpected after expression: ${separator.val}`);

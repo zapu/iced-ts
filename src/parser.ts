@@ -123,8 +123,29 @@ export class Parser {
     }
 
     while (true) {
-      const nextToken = this.peekToken()
-      if (nextToken?.type === '(') {
+      if (this.peekWhitespace()) {
+        // If there is a whitespace before argument list, it has to be
+        // "implicit" function call without parentheses.
+        this.state.inFCallImplicitArgs++
+        const firstArg = this.parseExpression()
+        if (!firstArg) {
+          this.state.inFCallImplicitArgs--
+          break
+        }
+        const args = [firstArg]
+        while (this.peekToken()?.type === ',') {
+          // this.state.skipNewline++
+          this.takeToken()
+          const arg = this.parseExpression()
+          if (!arg) {
+            throw new Error("Expected an expression after ',' in function call")
+          }
+          args.push(arg)
+          // this.state.skipNewline--
+        }
+        this.state.inFCallImplicitArgs--
+        chainFCall(args)
+      } else if (this.peekToken()?.type === '(') {
         this.takeToken()
         this.state.skipNewline++
         const args: nodes.Expression[] = []
@@ -148,31 +169,7 @@ export class Parser {
         }
         chainFCall(args)
       } else {
-        // Implicit function call without parentheses.
-        if (!this.peekWhitespace()) {
-          // Requires a whitespace before first argument, so something like 'a+b'
-          // is not parsed as 'a(+b)'.
-          break
-        }
-        this.state.inFCallImplicitArgs++
-        const firstArg = this.parseExpression()
-        if (!firstArg) {
-          this.state.inFCallImplicitArgs--
-          break
-        }
-        const args = [firstArg]
-        while (this.peekToken()?.type === ',') {
-          // this.state.skipNewline++
-          this.takeToken()
-          const arg = this.parseExpression()
-          if (!arg) {
-            throw new Error("Expected an expression after ',' in function call")
-          }
-          args.push(arg)
-          // this.state.skipNewline--
-        }
-        this.state.inFCallImplicitArgs--
-        chainFCall(args)
+        break
       }
     }
 
@@ -301,7 +298,7 @@ export class Parser {
     const bindThis = funcToken.val === '=>'
 
     let body = this.parseBlock()
-    if(!body) {
+    if (!body) {
       body = new nodes.Block()
     }
 
@@ -358,7 +355,10 @@ export class Parser {
       this.state = state
       return undefined
     }
-    if (this.takeToken()?.type !== ')') {
+    const next = this.peekToken()
+    if (next?.type === ')') {
+      this.takeToken()
+    } else {
       if (this.state.inFCall > 0) {
         // We might have gotten here because we are parsing something like:
         //   `(func_foo 1, 2, 3)`
@@ -379,7 +379,7 @@ export class Parser {
         this.state = state
         return undefined
       }
-      throw new Error("Expected ) after expression")
+      throw new Error(`Unexpected '${next?.val}' after expression, expected ')'`)
     }
     if (--this.state.skipNewline < 0) {
       throw new Error("internal: skipNewline mismatch")

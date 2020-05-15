@@ -64,6 +64,8 @@ const tests: TestCase[] = [
 
   { input: 'foo +2', expected: 'foo(+2)' },
   { input: 'foo -2', expected: 'foo(-2)' },
+  { input: 'foo (+2)', expected: 'foo((+2))' },
+  { input: 'foo (-2)', expected: 'foo((-2))' },
 
   // { input: '1 2', expected: '1(2)' }, // TODO: This one should be a parse error ("unexpected '2'")
   { input: 'foo +2, 3', expected: 'foo(+2,3)' },
@@ -81,9 +83,10 @@ const tests: TestCase[] = [
   { input: '(foo 2, 3, 4)', expected: '(foo(2,3,4))' },
   { input: '(foo)(2)', expected: '(foo)(2)' },
   { input: '(foo) 2', expected: '(foo)(2)' },
-  { input: '(foo) (2)', expected: '(foo)(2)' },
-  { input: '(foo) (a b)', expected: '(foo)(a(b))' },
-  { input: '(foo) (a, b)', expected: '(foo)(a,b)' },
+  { input: '(foo) (2)', expected: '(foo)((2))' },
+  { input: '(foo) (a b)', expected: '(foo)((a(b)))' },
+  { input: '(foo)(a b)', expected: '(foo)(a(b))' },
+  { input: '(foo)(a, b)', expected: '(foo)(a,b)' },
 
   // Recursive or chained function calls (target is a function call)
   { input: '(foo())(3)', expected: '(foo())(3)' },
@@ -98,7 +101,15 @@ const tests: TestCase[] = [
 
   // Combined function calls and arithmetic
   { input: 'foo(2) + 3', expected: 'foo(2) + 3' },
-  { input: 'foo (2) + 3', expected: 'foo(2) + 3' },
+  { input: 'foo (2) + 3', expected: 'foo((2) + 3)' },
+
+  // Functions
+  { input: 'foo = () ->', expected: 'foo = () -> {}' },
+  { input: 'foo = ->', expected: 'foo = () -> {}' },
+  { input: 'foo = (a, b) ->', expected: 'foo = (a,b) -> {}' },
+  { input: 'foo = (a = 1, b = 2) ->', expected: 'foo = (a=1,b=2) -> {}' },
+  { input: 'foo = (a=1, b) ->', expected: 'foo = (a=1,b) -> {}' },
+  { input: 'foo = (bar = () =>) ->', expected: 'foo = (bar=() => {}) -> {}' },
 ]
 
 if (runAll(tests)) {

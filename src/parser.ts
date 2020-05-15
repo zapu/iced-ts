@@ -281,12 +281,34 @@ export class Parser {
     return new nodes.Parens(expr)
   }
 
-  private parseExpression(noBinary?: boolean): nodes.Node | undefined {
+  private parseExpression(): nodes.Expression | undefined {
     return this.parseBinaryExpr()
   }
 
   private parseBlock() {
-    return this.parseExpression()
+    const block = new nodes.Block()
+    // Skip initial newlines
+    while(this.peekToken()?.type === 'NEWLINE') {
+      this.takeToken()
+    }
+
+    for(;;) {
+      const expr = this.parseExpression()
+      if(!expr) {
+        break
+      }
+      block.expressions.push(expr)
+
+      const separator = this.peekToken()
+      if(!separator) {
+        break
+      } else if (separator.type !== 'NEWLINE') {
+        throw new Error(`Unexpected after expression: ${separator.val}`);
+      } else {
+        this.takeToken()
+      }
+    }
+    return block
   }
 
   public parse() {

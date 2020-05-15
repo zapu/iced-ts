@@ -157,7 +157,7 @@ export class UnaryExpression extends Expression {
   }
 
   debugEvalJS(): number {
-    switch(this.operator.val) {
+    switch (this.operator.val) {
       case '+':
         return this.expression.debugEvalJS()
       case '-':
@@ -172,6 +172,18 @@ export class UnaryExpression extends Expression {
   }
 }
 
-// export class Block extends Node {
-//   expressions: Expression[] = []
-// }
+export class Block extends Node {
+  expressions: Expression[] = []
+
+  emit(): string {
+    throw new Error("Method not implemented.")
+  }
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+  debugEmitCommon(): string {
+    return this.expressions
+      .map(x => x.debugEmitCommon())
+      .join(';')
+  }
+}

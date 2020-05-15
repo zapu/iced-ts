@@ -3,7 +3,9 @@ import { Parser } from './parser'
 import * as util from 'util'
 
 async function main() {
-  let contents = "foo(1) + 2"
+  let contents = `foo(1)
+foo(2) + 3
+`
 
   console.log('input:')
   console.log(contents)

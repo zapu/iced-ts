@@ -103,6 +103,14 @@ export class Parser {
     }
   }
 
+  private parseStringLiteral() {
+    const token = this.peekToken()
+    if (token?.type === 'STRING') {
+      this.takeToken()
+      return new nodes.StringLiteral(token.val)
+    }
+  }
+
   private parseOperator() {
     const token = this.peekToken()
     if (token?.type === 'OPERATOR') {
@@ -233,6 +241,60 @@ export class Parser {
     return new nodes.Assign(target, value)
   }
 
+  private parseObjectLiteral(): nodes.ObjectLiteral | undefined {
+    if (this.peekToken()?.type !== '{') {
+      return undefined
+    }
+
+    // Advance past newlines
+    while(this.peekToken()?.type === 'NEWLINE') {
+      this.takeToken()
+    }
+
+    const state = this.cloneState()
+    this.takeToken()
+
+    const obj = new nodes.ObjectLiteral()
+
+    for (; ;) {
+      const id = this.parseIdentifier() ?? this.parseStringLiteral()
+      if (!id) {
+        throw new Error(`Expected string literal or identifier in object, found: ${this.peekToken()?.val}`)
+      }
+
+      const colon = this.takeToken()
+      if (colon.type !== ':') {
+        throw new Error(`Expected ':', got ${colon.val}`)
+      }
+
+      const expr = this.parseExpression()
+      if (!expr) {
+        throw new Error("Expected expression")
+      }
+
+      obj.properties.push({ propertyId: id, value: expr })
+
+      this.state.skipNewline++
+      const next = this.peekToken()
+
+
+      if(next?.type === "}") {
+        this.takeToken()
+        this.state.skipNewline--
+        break
+      } else if(next?.type === ',') {
+        this.takeToken()
+        this.state.skipNewline--
+        continue
+      } else {
+        this.state.skipNewline--
+      }
+    }
+
+
+    return obj
+  }
+
   private parseFunctionParam(): nodes.FunctionParam | undefined {
     const param = this.parseIdentifier() // TODO: Or object literal, or array literal
     if (!param) {
@@ -346,7 +408,9 @@ export class Parser {
     const simple = this.parseFunctionCall() ??
       this.parseAssign() ??
       this.parseNumber() ??
+      this.parseStringLiteral() ??
       this.parseIdentifier() ??
+      this.parseObjectLiteral() ??
       this.parseFunction()
 
     if (simple) {
@@ -436,7 +500,7 @@ export class Parser {
         const lineStartPos = this.state.pos
 
         let lineIndent = 0;
-        while(this.state.pos < this.tokens.length) {
+        while (this.state.pos < this.tokens.length) {
           const cur = this.tokens[this.state.pos]
           if (cur.type === 'WHITESPACE') {
             lineIndent += cur.val.length
@@ -472,7 +536,7 @@ export class Parser {
 
           this.state.indentStack = [...this.state.indentStack, blockIndent]
         } else {
-          if(lineIndent < blockIndent) {
+          if (lineIndent < blockIndent) {
             // end of block
             this.state.pos = lineStartPos
             break

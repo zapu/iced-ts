@@ -114,6 +114,11 @@ const tests: TestCase[] = [
   // Blocks
   { input: 'foo = () ->\n  hello()\nhi()', expected: 'foo = () -> {hello()};hi()' },
   { input: 'foo = ->\n  hi = ->\n    a()\n', expected: 'foo = () -> {hi = () -> {a()}}' },
+
+  // Object literals
+  { input: '{"a":1}', expected: '{"a": 1}' },
+  { input: '{a:1}', expected: '{a: 1}' },
+  { input: '{"hi":1,a :2}', expected: '{"hi": 1, a: 2}'}
 ]
 
 if (runAll(tests)) {

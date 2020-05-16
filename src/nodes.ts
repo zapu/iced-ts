@@ -53,6 +53,26 @@ export class Number extends Expression {
   }
 }
 
+export class StringLiteral extends Expression {
+  content: string
+  constructor(content: string) {
+    super()
+    this.content = content
+  }
+
+  emit(): string {
+    return this.content
+  }
+
+  debugEvalJS() {
+    return parseInt(this.content)
+  }
+
+  debugEmitCommon() {
+    return this.content
+  }
+}
+
 export class Identifier extends Expression {
   content: string
   constructor(content: string) {
@@ -138,6 +158,47 @@ export class Assign extends Expression {
   debugEmitCommon(): string {
     return `${this.target.debugEmitCommon()} = ${this.value.debugEmitCommon()}`
   }
+}
+
+export interface PropertyValuePair {
+  propertyId: Identifier | StringLiteral
+  value: Expression
+}
+
+export class ObjectLiteral extends Node {
+  properties: PropertyValuePair[] = []
+
+  constructor() {
+    super()
+  }
+
+  emit(): string {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    const propList = this.properties.map(x => {
+      return `${x.propertyId.debugEmitCommon()}: ${x.value.debugEmitCommon()}`
+    }).join(', ')
+    return `{${propList}}`
+  }
+}
+
+export class ArrayLiteral extends Node {
+  emit(): string {
+    throw new Error("Method not implemented.")
+  }
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+  debugEmitCommon(): string {
+    throw new Error("Method not implemented.")
+  }
+
 }
 
 export interface FunctionParam {

@@ -7,7 +7,8 @@ export type TokenType = 'BLOCK_START' | 'BLOCK_END' |
     'IDENTIFIER' | 'NUMBER' | 'COMMENT' | 'NEWLINE' |
     'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' | `,` |
     'CLASS' | 'RETURN' | 'IF' | 'UNLESS' | '(' | ')'|
-    ';' | 'UNARY' | 'UNARY_MATH' | 'BUILTIN_PRIMARY'
+    ';' | 'UNARY' | 'UNARY_MATH' | 'BUILTIN_PRIMARY' |
+    '{' | '}' | ':' | '[' | ']' | 'STRING'
 
 const commonTokens : {[str: string]: TokenType} = {
     '->': 'FUNC',
@@ -42,6 +43,13 @@ const commonTokens : {[str: string]: TokenType} = {
     ')': ')',
     ',': ',',
     ';': ';',
+
+    '{': '{',
+    '}': '}',
+    ':': ':',
+
+    '[': '[',
+    ']': ']',
 
     '!': 'UNARY_MATH',
     '~': 'UNARY_MATH',
@@ -118,6 +126,32 @@ export class Scanner {
         return this.scanRegexp(whitespaceRxp, 'WHITESPACE')
     }
 
+    private scanStringLiteral() : Token | null {
+        if(['"', '\''].includes(this.chunk[0])) {
+            const qt = this.chunk[0]
+            let i = 1;
+            for(; i < this.chunk.length; i++) {
+                const char = this.chunk[i]
+                if(!char) {
+                    throw new Error('endquote?')
+                } else if(char === '\n') {
+                    throw new Error('endquote?')
+                } else if(char === '\\') {
+                    i++; // skip next char
+                } else if (char === qt) {
+                    break
+                }
+            }
+            const val = this.chunk.substr(0, i + 1)
+            return {
+                type: 'STRING',
+                consumed: val.length,
+                val,
+            }
+        }
+        return null
+    }
+
     private scanComment(): Token | null {
         if (this.chunk[0] === '#') {
             let newLinePos = this.chunk.indexOf('\n')
@@ -167,6 +201,7 @@ export class Scanner {
             const token = this.scanCommon() ||
                 this.scanIdentifier() ||
                 this.scanNumber() ||
+                this.scanStringLiteral() ||
                 this.scanComment() ||
                 this.scanWhitespace()
 

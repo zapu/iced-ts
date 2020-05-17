@@ -53,38 +53,80 @@ export class Parser {
     return { ...this.state }
   }
 
+  private currentIndentLevel(): number {
+    if(this.state.indentStack.length) {
+      return this.state.indentStack[this.state.indentStack.length - 1]
+    } else {
+      throw new Error('BUG: currentIndentLevel but indentStack is empty')
+    }
+  }
+
   private peekWhitespace(): boolean {
     return ['WHITESPACE', 'NEWLINE'].includes(this.tokens[this.state.pos]?.type)
   }
 
-  private peekToken(): Token | undefined {
+  private findIndent(startPos: number): { indent: number, pos: number } {
+    if (this.tokens[startPos]?.type !== 'NEWLINE') {
+      throw new Error("BUG: cannot do peekIndent() while not at NEWLINE")
+    }
+
+    let indent = 0
+    let pos = startPos + 1
+    for (; pos < this.tokens.length; pos++) {
+      const token = this.tokens[pos]
+      if(token.type === 'WHITESPACE') {
+        indent += token.val.length
+      } else if(token.type === 'COMMENT') {
+        // Ignore comments here
+      } else if (token.type === 'NEWLINE') {
+        // Reset current indent and keep looking on next line
+        indent = 0
+      } else {
+        break
+      }
+    }
+    return { indent, pos }
+  }
+
+  private findToken(peek: boolean, skipNewline: boolean): Token | undefined {
     for (let i = this.state.pos; i < this.tokens.length; i++) {
       const token = this.tokens[i]
-      if (this.state.skipNewline && token.type === 'NEWLINE') {
+      if(skipNewline && token.type === 'NEWLINE') {
+        const { indent, pos } = this.findIndent(i)
+        if(indent < this.currentIndentLevel()) {
+          throw new Error('Unexpected outdent')
+        }
+        i = pos - 1
         continue
       }
-      if (!isTrivia(token.type)) {
+      if(!isTrivia(token.type)) {
+        if(!peek) {
+          this.state.pos = i + 1
+        }
         return token
       }
     }
   }
 
+  private peekToken(): Token | undefined {
+    return this.findToken(true /* peek */, this.state.skipNewline > 0)
+  }
+
   private takeToken(): Token {
-    while (this.state.pos < this.tokens.length) {
-      const token = this.tokens[this.state.pos]
-      this.state.pos++
-      if (this.state.skipNewline && token.type === 'NEWLINE') {
-        continue
-      }
-      if (!isTrivia(token.type)) {
-        return token
-      }
+    const tok = this.findToken(false, this.state.skipNewline > 0)
+    if(!tok) {
+      throw new Error('Ran out of tokens')
     }
-    throw new Error("Ran out of tokens")
+    return tok
   }
 
   private returnToken(): void {
     this.state.pos--
+  }
+
+  private advanceThroughNewlinesToToken(): void {
+    this.findToken(false, true)
+    this.returnToken()
   }
 
   private parseNumber() {
@@ -206,7 +248,9 @@ export class Parser {
     }
     while (this.peekToken()?.type === 'OPERATOR') {
       const opToken = this.takeToken()
+      this.state.skipNewline++
       const right = this.parseUnaryExpr()
+      this.state.skipNewline--
       if (!right) {
         throw new Error(`parse error after ${opToken.val}`)
       }
@@ -233,9 +277,11 @@ export class Parser {
     }
     const operator = this.takeToken()
 
+    this.advanceThroughNewlinesToToken()
+
     const value = this.parseExpression()
     if (!value) {
-      throw new Error("Unexpected expression after assignment operator")
+      throw new Error("Expected an expression after assignment operator")
     }
 
     return new nodes.Assign(target, value)
@@ -393,7 +439,9 @@ export class Parser {
         this.returnToken()
         return undefined
       }
+      this.state.skipNewline++
       const expr = this.parsePrimaryExpr()
+      this.state.skipNewline--
       if (!expr) {
         throw new Error(`Expected expression after unary operator '${operator.val}'`)
       }
@@ -495,6 +543,8 @@ export class Parser {
     const rootBlock = lastIndent === undefined
 
     if (rootBlock || this.peekToken()?.type === 'NEWLINE') {
+      // either a root block, or block starting on the next line (e.g. after
+      // function def. token).
       let blockIndent: number | undefined = undefined;
       for (; ;) {
         const lineStartPos = this.state.pos
@@ -562,7 +612,7 @@ export class Parser {
         this.state.indentStack = this.state.indentStack.slice(0, -1)
       }
     } else if (this.peekToken()) {
-      // anything else (that exists!)
+      // anything else (that's not a whitespace)
       loop: for (; ;) {
         const expr = this.parseExpression()
         if (!expr) {

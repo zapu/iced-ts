@@ -10,8 +10,8 @@ interface TestCase {
 function runAll(tests: TestCase[]) {
   let success = true
   for (const test of tests) {
+    const inputCon = test.input.replace(/\n/g, '⏎')
     try {
-      const inputCon = test.input.replace(/\n/g, '⏎')
       // console.log(`...: ${inputCon}`)
 
       // TODO: Potential optimization, can create Scanner and Parser once and
@@ -34,7 +34,7 @@ function runAll(tests: TestCase[]) {
       }
 
     } catch (err) {
-      console.error(`[x] Failed for input: "${test.input}": expected '${test.expected}' got exception: ${err.message}`)
+      console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got exception: ${err.message}`)
       console.error(err)
       success = false
     }
@@ -47,6 +47,19 @@ const tests: TestCase[] = [
   { input: '1 + 2 * 3', expected: '1 + 2 * 3' },
   { input: '(1 + 2) * 3', expected: '(1 + 2) * 3' },
   { input: '1 * 2 + 3', expected: '1 * 2 + 3' },
+
+  // Also with arbitrary newlines and indent between the operator and and
+  // expression.
+  { input: '1 +\n2', expected: '1 + 2' },
+
+  // Unary expressions
+  { input: '-3', expected: '-3' },
+  { input: '+3', expected: '+3' },
+  { input: '-(2*3)', expected: '-(2 * 3)' },
+
+  { input: '+\n\n3', expected: '+3' },
+  { input: '-\n\n  3', expected: '-3' },
+  { input: '-\n\n  (2+3)', expected: '-(2 + 3)' },
 
   // Almost implicit function calls, but targets are not identifiers or
   // parenthesized expressions, so they end up being binary operations.
@@ -94,6 +107,7 @@ const tests: TestCase[] = [
   { input: '(foo(2)) 3', expected: '(foo(2))(3)' },
 
   { input: 'foo(1)(2)', expected: 'foo(1)(2)' },
+  { input: 'foo(1)(2)(3)', expected: 'foo(1)(2)(3)' },
   { input: 'foo(1) +3', expected: 'foo(1)(+3)' },
   { input: 'foo bar baz 1', expected: 'foo(bar(baz(1)))' },
   { input: 'foo(1)(func 2)', expected: 'foo(1)(func(2))' },
@@ -102,6 +116,10 @@ const tests: TestCase[] = [
   // Combined function calls and arithmetic
   { input: 'foo(2) + 3', expected: 'foo(2) + 3' },
   { input: 'foo (2) + 3', expected: 'foo((2) + 3)' },
+
+  // Assignments
+  { input: 'a = 2', expected: 'a = 2' },
+  { input: 'a =\n\n2', expected: 'a = 2' },
 
   // Functions
   { input: 'foo = () ->', expected: 'foo = () -> {}' },

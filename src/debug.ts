@@ -3,11 +3,7 @@ import { Parser } from './parser'
 import * as util from 'util'
 
 async function main() {
-  let contents = `
-foo = () ->
-  hello()
-hi()
-`
+  let contents = `2+\n\n3`
 
   console.log('input:')
   console.log(contents)

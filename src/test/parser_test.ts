@@ -88,10 +88,14 @@ const tests: TestCase[] = [
   { input: 'foo +2, b +3', expected: 'foo(+2,b(+3))' },
   { input: 'foo +2, b +3 | 0', expected: 'foo(+2,b(+3 | 0))' },
   { input: 'foo a b c', expected: 'foo(a(b(c)))' },
+  { input: 'foo a b c', expected: 'foo(a(b(c)))' },
 
   // Other function calls
   { input: 'foo(2)', expected: 'foo(2)' },
   { input: 'foo(2, 3, 4)', expected: 'foo(2,3,4)' },
+  { input: 'foo(2,\n  3,\n  4)', expected: 'foo(2,3,4)' },
+  { input: 'foo(2,\n  3,\n  4\n  )', expected: 'foo(2,3,4)' },
+  { input: 'foo 2,\n  3,\n  4', expected: 'foo(2,3,4)' },
 
   { input: '(foo 2, 3, 4)', expected: '(foo(2,3,4))' },
   { input: '(foo)(2)', expected: '(foo)(2)' },

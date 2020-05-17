@@ -10,7 +10,6 @@ const operatorPriority: { [k: string]: number } = {
 
 interface ParserState {
   pos: number
-  skipNewline: number
   inFCall: number
   inFCallImplicitArgs: number // trying to descend into function call without parentheses
 
@@ -40,7 +39,6 @@ export class Parser {
     this.tokens = tokens
     this.state = {
       pos: 0,
-      skipNewline: 0,
       inFCall: 0,
       inFCallImplicitArgs: 0,
       inParens: 0,
@@ -109,11 +107,11 @@ export class Parser {
   }
 
   private peekToken(): Token | undefined {
-    return this.findToken(true /* peek */, this.state.skipNewline > 0)
+    return this.findToken(true /* peek */, false /* skipNewline */)
   }
 
   private takeToken(): Token {
-    const tok = this.findToken(false, this.state.skipNewline > 0)
+    const tok = this.findToken(false /* peek */, false /* skipNewline */)
     if(!tok) {
       throw new Error('Ran out of tokens')
     }
@@ -194,8 +192,8 @@ export class Parser {
         }
         const args = [firstArg]
         while (this.peekToken()?.type === ',') {
-          // this.state.skipNewline++
           this.takeToken()
+          this.advanceThroughNewlinesToToken()
           const arg = this.parseExpression()
           if (!arg) {
             throw new Error("Expected an expression after ',' in function call")
@@ -207,13 +205,14 @@ export class Parser {
         chainFCall(args)
       } else if (this.peekToken()?.type === '(') {
         this.takeToken()
-        this.state.skipNewline++
+        this.advanceThroughNewlinesToToken()
         const args: nodes.Expression[] = []
         const firstArg = this.parseExpression()
         if (firstArg) {
           args.push(firstArg)
           while (this.peekToken()?.type === ',') {
             this.takeToken()
+            this.advanceThroughNewlinesToToken()
             const arg = this.parseExpression()
             if (!arg) {
               throw new Error("Expected an expression after ',' in function call")
@@ -221,11 +220,10 @@ export class Parser {
             args.push(arg)
           }
         }
+
+        this.advanceThroughNewlinesToToken()
         if (this.takeToken()?.type !== ')') {
           throw new Error('Expected ) in function call')
-        }
-        if (--this.state.skipNewline < 0) {
-          throw new Error("internal: skipNewline mismatch")
         }
         chainFCall(args)
       } else {
@@ -248,9 +246,8 @@ export class Parser {
     }
     while (this.peekToken()?.type === 'OPERATOR') {
       const opToken = this.takeToken()
-      this.state.skipNewline++
+      this.advanceThroughNewlinesToToken()
       const right = this.parseUnaryExpr()
-      this.state.skipNewline--
       if (!right) {
         throw new Error(`parse error after ${opToken.val}`)
       }
@@ -320,20 +317,21 @@ export class Parser {
 
       obj.properties.push({ propertyId: id, value: expr })
 
-      this.state.skipNewline++
-      const next = this.peekToken()
+      let next = this.peekToken()
+      if(next?.type === 'NEWLINE') {
+        this.advanceThroughNewlinesToToken()
+        next = this.peekToken()
+      }
+      if(!next) {
+        throw new Error('ran out of tokens in the middle of object literal')
+      }
 
-
-      if(next?.type === "}") {
+      if(next.type === "}") {
         this.takeToken()
-        this.state.skipNewline--
         break
-      } else if(next?.type === ',') {
+      } else if(next.type === ',') {
         this.takeToken()
-        this.state.skipNewline--
         continue
-      } else {
-        this.state.skipNewline--
       }
     }
 
@@ -439,9 +437,8 @@ export class Parser {
         this.returnToken()
         return undefined
       }
-      this.state.skipNewline++
+      this.advanceThroughNewlinesToToken()
       const expr = this.parsePrimaryExpr()
-      this.state.skipNewline--
       if (!expr) {
         throw new Error(`Expected expression after unary operator '${operator.val}'`)
       }
@@ -474,8 +471,6 @@ export class Parser {
     }
     const state = this.cloneState()
     this.takeToken()
-    // Found parentesiszed expression, start skipping newline.
-    this.state.skipNewline++
     // And parsing coming from this point has to be aware that we are in the
     // middle of parentheses.
     this.state.inParens++
@@ -510,7 +505,6 @@ export class Parser {
       }
       throw new Error(`Unexpected '${next?.val}' after expression, expected ')'`)
     }
-    this.state.skipNewline--
     this.state.inParens--
     return new nodes.Parens(expr)
   }

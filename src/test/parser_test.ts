@@ -140,7 +140,16 @@ const tests: TestCase[] = [
   // Object literals
   { input: '{"a":1}', expected: '{"a": 1}' },
   { input: '{a:1}', expected: '{a: 1}' },
-  { input: '{"hi":1,a :2}', expected: '{"hi": 1, a: 2}'}
+  { input: '{"hi":1,a :2}', expected: '{"hi": 1, a: 2}'},
+
+  // Dark Souls of language parsers
+  { input: "a 1,\n2", expected: "a(1,2)" },
+  { input: "  a 1,\n  2,\n  3", expected: "a(1,2,3)" },
+  { input: "  a 1,\n  2,\n  3\n", expected: "a(1,2,3)" },
+  { input: "  a 1,\n  2,\n    3,\n     4,\n    5", expected: "a(1,2,3,4,5)" },
+  { input: "  a 1,\n  2,\n    3,\n     4,\n    5\n", expected: "a(1,2,3,4,5)" },
+  { input: "a 1,\n2\n3\n", expected: "a(1,2);3" },
+  { input: "  a 1,\n  2\n  3\n", expected: "a(1,2);3" }
 ]
 
 if (runAll(tests)) {

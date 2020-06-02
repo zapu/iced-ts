@@ -3,10 +3,10 @@ import { Parser } from './parser'
 import * as util from 'util'
 
 async function main() {
-  let contents = `2+\n\n3`
+  let contents = `  a 1,\n  2\n  3`
 
   console.log('input:')
-  console.log(contents)
+  console.log(contents.replace(/ /g, '·').replace(/\n/g, '⏎\n'))
 
   const scanner = new Scanner()
   scanner.reset(contents)

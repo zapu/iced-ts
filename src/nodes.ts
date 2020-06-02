@@ -293,6 +293,7 @@ export class UnaryExpression extends Expression {
 
 export class Block extends Node {
   expressions: Expression[] = []
+  indent: number = 0
 
   emit(): string {
     return this.expressions

@@ -19,7 +19,7 @@ async function main() {
   })
 
   console.log('input:')
-  console.log(contents)
+  console.log(contents.replace(/ /g, '·').replace(/\n/g, '⏎\n'))
 
   const scanner = new Scanner()
   scanner.reset(contents)
@@ -39,8 +39,12 @@ async function main() {
   console.log('emit:')
   console.log(nodes?.emit())
 
-  console.log('evalMath:', nodes?.debugEvalJS())
-  console.log('eval:', eval(contents))
+  try {
+    console.log('evalMath:', nodes?.debugEvalJS())
+    console.log('eval:', eval(contents))
+  } catch (e) {
+    console.error('cannot eval:', e)
+  }
 }
 
 main().then(() => {

@@ -1,5 +1,6 @@
 import { Token, isTrivia } from './scanner'
 import * as nodes from './nodes'
+import { start } from 'repl'
 
 const operatorPriority: { [k: string]: number } = {
   '+': 50,
@@ -18,7 +19,14 @@ interface ParserState {
   // setTimeout (-> hello(); world()), 10
   inParens: number
 
+  // `moveToNextLine` by default will throw an error about "missing indentation"
+  // if indent found in next line is smaller than `currentMinIndent`. But parsing
+  // block special cases this (using `inBlock` arg) to find end of blocks.
   indentStack: number[]
+
+  // Set to true when `moveToNextLine` hits end of token stream when looking
+  // for a non-whitespace and non-newline token.
+  eof: boolean
 }
 
 function isUnary(token: Token): boolean {
@@ -44,6 +52,8 @@ export class Parser {
       inParens: 0,
 
       indentStack: [],
+
+      eof: false,
     }
   }
 
@@ -52,79 +62,81 @@ export class Parser {
   }
 
   private currentIndentLevel(): number {
-    if(this.state.indentStack.length) {
+    if (this.state.indentStack.length) {
       return this.state.indentStack[this.state.indentStack.length - 1]
     } else {
       throw new Error('BUG: currentIndentLevel but indentStack is empty')
     }
   }
 
-  private peekWhitespace(): boolean {
-    return ['WHITESPACE', 'NEWLINE'].includes(this.tokens[this.state.pos]?.type)
+  private peekSpace(): boolean {
+    return this.tokens[this.state.pos]?.type === 'WHITESPACE'
   }
 
-  private findIndent(startPos: number): { indent: number, pos: number } {
-    if (this.tokens[startPos]?.type !== 'NEWLINE') {
-      throw new Error("BUG: cannot do peekIndent() while not at NEWLINE")
-    }
+  private peekNewline(): boolean {
+    // peekToken() never skips over NEWLINEs, use it to check if there is a new
+    // line, because there might be a stream of tokens like '[WHITESPACE] [NEWLINE]'.
+    return this.peekToken()?.type === 'NEWLINE'
+  }
+
+  // moveToNewLine returns indent
+  private moveToNextLine(inBlock?: boolean): number {
+    let startPos = this.state.pos
 
     let indent = 0
-    let pos = startPos + 1
+    let pos = startPos
+    if (!(inBlock && startPos === 0)) {
+      if (this.takeToken().type !== 'NEWLINE') {
+        throw new Error("BUG: cannot do moveToNextLine() while not at NEWLINE")
+      }
+      pos++ // skip over first newline
+    }
+
+    let foundToken = false
     for (; pos < this.tokens.length; pos++) {
       const token = this.tokens[pos]
-      if(token.type === 'WHITESPACE') {
+      if (token.type === 'WHITESPACE') {
         indent += token.val.length
-      } else if(token.type === 'COMMENT') {
+      } else if (token.type === 'COMMENT') {
         // Ignore comments here
       } else if (token.type === 'NEWLINE') {
         // Reset current indent and keep looking on next line
         indent = 0
       } else {
+        foundToken = true
         break
       }
     }
-    return { indent, pos }
-  }
 
-  private findToken(peek: boolean, skipNewline: boolean): Token | undefined {
-    for (let i = this.state.pos; i < this.tokens.length; i++) {
-      const token = this.tokens[i]
-      if(skipNewline && token.type === 'NEWLINE') {
-        const { indent, pos } = this.findIndent(i)
-        if(indent < this.currentIndentLevel()) {
-          throw new Error('Unexpected outdent')
-        }
-        i = pos - 1
-        continue
-      }
-      if(!isTrivia(token.type)) {
-        if(!peek) {
-          this.state.pos = i + 1
-        }
-        return token
-      }
+    if (inBlock && !foundToken) {
+      this.state.eof = true
     }
+
+    if (!inBlock && indent < this.currentIndentLevel()) {
+      throw new Error("missing indent")
+    }
+
+    this.state.pos = pos
+    return indent
   }
 
   private peekToken(): Token | undefined {
-    return this.findToken(true /* peek */, false /* skipNewline */)
+    for (let i = this.state.pos; i < this.tokens.length; i++) {
+      if (!isTrivia(this.tokens[i].type)) {
+        return this.tokens[i]
+      }
+    }
+    return undefined
   }
 
   private takeToken(): Token {
-    const tok = this.findToken(false /* peek */, false /* skipNewline */)
-    if(!tok) {
-      throw new Error('Ran out of tokens')
+    for (let i = this.state.pos; i < this.tokens.length; i++) {
+      if (!isTrivia(this.tokens[i].type)) {
+        this.state.pos = i + 1
+        return this.tokens[i]
+      }
     }
-    return tok
-  }
-
-  private returnToken(): void {
-    this.state.pos--
-  }
-
-  private advanceThroughNewlinesToToken(): void {
-    this.findToken(false, true)
-    this.returnToken()
+    throw new Error('Ran out of tokens')
   }
 
   private parseNumber() {
@@ -159,6 +171,78 @@ export class Parser {
     }
   }
 
+  private parseImplicitFunctionCallArguments(): nodes.Expression[] | undefined {
+    const state = this.cloneState()
+    this.state.inFCallImplicitArgs++
+    const firstArg = this.parseExpression()
+    if (!firstArg) {
+      // Implicit function calls need at least one argument in the same line as
+      // function call target
+      this.state = state
+      return undefined
+    }
+
+    const args = [firstArg]
+    if (this.peekToken()?.type !== ',') {
+      this.state.inFCallImplicitArgs--
+      return args
+    }
+    this.takeToken()
+
+    let hadComma = true
+    const blockIndent = this.currentIndentLevel()
+    let impBlockIdent: number | undefined = undefined
+    while (true) {
+      if (this.peekNewline()) {
+        const lastPos = this.state.pos
+        const newIndent = this.moveToNextLine(true)
+        if (newIndent > blockIndent) {
+          impBlockIdent = newIndent
+        }
+
+        if (!hadComma) {
+          if (newIndent <= blockIndent) {
+            // end of block
+            this.state.pos = lastPos // give back the newlines
+            break
+          }
+
+          if (impBlockIdent === undefined) {
+            throw new Error("unexpected indentation")
+          }
+
+          if (newIndent <= impBlockIdent) {
+            // end of this implicit call args
+            this.state.pos = lastPos // give back the newlines
+            break
+          }
+        } else {
+          if (newIndent < blockIndent) {
+            throw new Error("missing indentation")
+          }
+        }
+      }
+
+      const nextArg = this.parseExpression()
+      if (!nextArg) {
+        if (hadComma) {
+          throw new Error('Expected another expression after comma')
+        } else {
+          break
+        }
+      }
+      args.push(nextArg)
+
+      hadComma = this.peekToken()?.type === ','
+      if (hadComma) {
+        this.takeToken()
+      }
+    }
+
+    this.state.inFCallImplicitArgs--
+    return args
+  }
+
   private parseFunctionCall(): nodes.FunctionCall | undefined {
     const state = this.cloneState()
     // Do not recurse on function call rule, we handle chained calls through a
@@ -181,38 +265,31 @@ export class Parser {
     }
 
     while (true) {
-      if (this.peekWhitespace()) {
+      if (this.peekSpace()) {
         // If there is a whitespace before argument list, it has to be
         // "implicit" function call without parentheses.
-        this.state.inFCallImplicitArgs++
-        const firstArg = this.parseExpression()
-        if (!firstArg) {
-          this.state.inFCallImplicitArgs--
+
+        // Function call arguments here are handled by another function because
+        // how complicated the rules are...
+        const args = this.parseImplicitFunctionCallArguments()
+        if (!args) {
           break
         }
-        const args = [firstArg]
-        while (this.peekToken()?.type === ',') {
-          this.takeToken()
-          this.advanceThroughNewlinesToToken()
-          const arg = this.parseExpression()
-          if (!arg) {
-            throw new Error("Expected an expression after ',' in function call")
-          }
-          args.push(arg)
-          // this.state.skipNewline--
-        }
-        this.state.inFCallImplicitArgs--
         chainFCall(args)
       } else if (this.peekToken()?.type === '(') {
         this.takeToken()
-        this.advanceThroughNewlinesToToken()
+        if (this.peekNewline()) {
+          this.moveToNextLine()
+        }
         const args: nodes.Expression[] = []
         const firstArg = this.parseExpression()
         if (firstArg) {
           args.push(firstArg)
           while (this.peekToken()?.type === ',') {
             this.takeToken()
-            this.advanceThroughNewlinesToToken()
+            if (this.peekNewline()) {
+              this.moveToNextLine()
+            }
             const arg = this.parseExpression()
             if (!arg) {
               throw new Error("Expected an expression after ',' in function call")
@@ -221,7 +298,9 @@ export class Parser {
           }
         }
 
-        this.advanceThroughNewlinesToToken()
+        if (this.peekNewline()) {
+          this.moveToNextLine()
+        }
         if (this.takeToken()?.type !== ')') {
           throw new Error('Expected ) in function call')
         }
@@ -246,13 +325,22 @@ export class Parser {
     }
     while (this.peekToken()?.type === 'OPERATOR') {
       const opToken = this.takeToken()
-      this.advanceThroughNewlinesToToken()
+      if (this.peekNewline()) {
+        this.moveToNextLine()
+      }
       const right = this.parseUnaryExpr()
       if (!right) {
         throw new Error(`parse error after ${opToken.val}`)
       }
       if (left instanceof nodes.BinaryExpression) {
-        if ((operatorPriority[opToken.val] ?? 0) > (operatorPriority[left.operator.val] ?? 0)) {
+        // TODO: Make sure all operator priorities are defined
+        if (operatorPriority[opToken.val] === undefined) {
+          throw new Error(`undefined operator priority for '${opToken.val}`)
+        }
+        if (operatorPriority[left.operator.val] === undefined) {
+          throw new Error(`undefined operator priority for '${left.operator.val}`)
+        }
+        if (operatorPriority[opToken.val] > operatorPriority[left.operator.val]) {
           left.right = new nodes.BinaryExpression(left.right, opToken, right)
           continue
         }
@@ -274,7 +362,9 @@ export class Parser {
     }
     const operator = this.takeToken()
 
-    this.advanceThroughNewlinesToToken()
+    if (this.peekNewline()) {
+      this.moveToNextLine()
+    }
 
     const value = this.parseExpression()
     if (!value) {
@@ -290,7 +380,7 @@ export class Parser {
     }
 
     // Advance past newlines
-    while(this.peekToken()?.type === 'NEWLINE') {
+    while (this.peekToken()?.type === 'NEWLINE') {
       this.takeToken()
     }
 
@@ -318,18 +408,18 @@ export class Parser {
       obj.properties.push({ propertyId: id, value: expr })
 
       let next = this.peekToken()
-      if(next?.type === 'NEWLINE') {
-        this.advanceThroughNewlinesToToken()
+      if (next?.type === 'NEWLINE') {
+        this.moveToNextLine()
         next = this.peekToken()
       }
-      if(!next) {
+      if (!next) {
         throw new Error('ran out of tokens in the middle of object literal')
       }
 
-      if(next.type === "}") {
+      if (next.type === "}") {
         this.takeToken()
         break
-      } else if(next.type === ',') {
+      } else if (next.type === ',') {
         this.takeToken()
         continue
       }
@@ -428,16 +518,19 @@ export class Parser {
   private parseUnaryExpr(): nodes.Expression | undefined {
     const operator = this.peekToken()
     if (operator && isUnary(operator)) {
+      const pos = this.state.pos
       this.takeToken()
-      if (this.state.inFCallImplicitArgs > 0 && this.peekWhitespace()) {
+      if (this.state.inFCallImplicitArgs > 0 && this.peekSpace()) {
         // In expression like 'a - b', do not consider '- b' to be an unary
         // expression, because then we would end up parsing it as 'a(-b)'.
         //
         // However', 'a -b' should actually be parsed as 'a(-b)'.
-        this.returnToken()
+        this.state.pos = pos
         return undefined
       }
-      this.advanceThroughNewlinesToToken()
+      if (this.peekNewline()) {
+        this.moveToNextLine()
+      }
       const expr = this.parsePrimaryExpr()
       if (!expr) {
         throw new Error(`Expected expression after unary operator '${operator.val}'`)
@@ -513,7 +606,7 @@ export class Parser {
     return this.parseBinaryExpr()
   }
 
-  private parseBlock() {
+  private parseBlock(rootBlock?: boolean) {
     const state = this.cloneState()
     const block = new nodes.Block()
 
@@ -531,59 +624,48 @@ export class Parser {
     // foo (-> hello()), 10
     //
     // this.state.inParens helps with it, signifying that we can stop on
-    // closing parenthesis without error.
+    // closing parenthesis and return the block.
 
     const lastIndent = this.state.indentStack[this.state.indentStack.length - 1] as number | undefined
-    const rootBlock = lastIndent === undefined
 
     if (rootBlock || this.peekToken()?.type === 'NEWLINE') {
       // either a root block, or block starting on the next line (e.g. after
       // function def. token).
       let blockIndent: number | undefined = undefined;
+
       for (; ;) {
         const lineStartPos = this.state.pos
-
-        let lineIndent = 0;
-        while (this.state.pos < this.tokens.length) {
-          const cur = this.tokens[this.state.pos]
-          if (cur.type === 'WHITESPACE') {
-            lineIndent += cur.val.length
-          } else if (cur.type === 'NEWLINE') {
-            // We got a newline while counting indents for current line, reset
-            // indent counter and try again for the next line. Empty lines with
-            // random indents are fine and do not interrupt block flow.
-            lineIndent = 0;
-          } else if (cur.type === 'COMMENT') {
-            // Just skip over comments for now.
-          } else {
-            // We found something else than WHITESPACE, NEWLINE or trivia -
-            // we know how indented it is and we can start parsing.
-            break
-          }
-
-          this.state.pos++
-        }
-
-        if (this.state.pos === this.tokens.length) {
-          // We ran out of tokens.
-          return block
-        }
+        const indent = this.moveToNextLine(true /* inBlock */)
 
         if (blockIndent === undefined) {
-          blockIndent = lineIndent
-          if (!rootBlock && lineIndent === lastIndent) {
+          blockIndent = indent
+          if (!rootBlock && indent === lastIndent) {
             // empty block, we immediately indented back to previous block
             // indentation.
+            // e.g.:
+            //
+            // foo = () ->
+            // bar = foo()
+            //
+            // block of function assigned to `foo` ends immediately, without any tokens.
+            // it's an empty block.
             this.state = state
-            return undefined
+            return block
           }
 
           this.state.indentStack = [...this.state.indentStack, blockIndent]
+          block.indent = blockIndent
         } else {
-          if (lineIndent < blockIndent) {
+          if (indent < blockIndent) {
+            if(rootBlock && !this.state.eof) {
+              // root block cannot end with de-indent
+              throw new Error("Missing indentation in root block")
+            }
             // end of block
             this.state.pos = lineStartPos
             break
+          } else if (indent > blockIndent) {
+            throw new Error("unexpected indentation")
           }
         }
 
@@ -601,6 +683,7 @@ export class Parser {
         }
       }
 
+      // Done parsing the block.
       if (!rootBlock) {
         // Restore indent stack
         this.state.indentStack = this.state.indentStack.slice(0, -1)
@@ -641,6 +724,20 @@ export class Parser {
   }
 
   public parse() {
-    return this.parseBlock()
+    const block = this.parseBlock(true /* rootBlock */)
+
+    // FIXME: very inefficient to do both peekToken and takeToken in a loop.
+    // This is probably not the only place that does this.
+    while(this.peekToken()) {
+      const token = this.takeToken()
+      if(token.type !== 'NEWLINE') {
+        // TODO: Ideally we would try to resume parsing here to try to tell
+        // user what happened. E.g. maybe there's a letfover expression here
+        // somehow.
+        throw new Error('found leftover tokens')
+      }
+    }
+
+    return block
   }
 }

@@ -219,7 +219,14 @@ export class Function extends Expression {
   }
 
   emit(): string {
-    throw new Error("Method not implemented.")
+    const argList = this.args.map((x) => {
+      if (x.defaultValue) {
+        return `${x.param.emit()}=${x.defaultValue.emit()}`
+      } else {
+        return x.param.emit()
+      }
+    })
+    return `(${argList.join(',')}) ${this.bindThis ? '=>' : '->'} {\n${this.body.emit()} }`
   }
 
   debugEvalJS() {

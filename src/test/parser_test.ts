@@ -133,6 +133,13 @@ const tests: TestCase[] = [
   { input: 'foo = (a=1, b) ->', expected: 'foo = (a=1,b) -> {}' },
   { input: 'foo = (bar = () =>) ->', expected: 'foo = (bar=() => {}) -> {}' },
 
+  { input: 'foo = (bar = () =>)', expected: 'foo = (bar = () => {})' },
+
+  { input: 'setTimeout (-> log(10)), 5', expected: 'setTimeout((() -> {log(10)}),5)' },
+  { input: 'delay 5, (-> log(10))', expected: 'delay(5,(() -> {log(10)}))' },
+  { input: 'delay 5, -> log(10)', expected: 'delay(5,() -> {log(10)})' },
+  { input: 'delay -> log(10)', expected: 'delay(() -> {log(10)})' },
+
   // Blocks
   { input: 'foo = () ->\n  hello()\nhi()', expected: 'foo = () -> {hello()};hi()' },
   { input: 'foo = ->\n  hi = ->\n    a()\n', expected: 'foo = () -> {hi = () -> {a()}}' },

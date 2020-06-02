@@ -492,11 +492,6 @@ export class Parser {
       }
 
       this.state.inParens--
-    } else {
-      if (this.state.inFCallImplicitArgs) {
-        this.state = state
-        return undefined
-      }
     }
 
     if (this.peekToken()?.type !== 'FUNC') {

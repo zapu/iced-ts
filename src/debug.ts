@@ -3,7 +3,7 @@ import { Parser } from './parser'
 import * as util from 'util'
 
 async function main() {
-  let contents = `  a 1,\n  2\n  3`
+  let contents = `delay 1, (-> log(1))`
 
   console.log('input:')
   console.log(contents.replace(/ /g, '·').replace(/\n/g, '⏎\n'))

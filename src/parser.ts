@@ -538,13 +538,14 @@ export class Parser {
 
   private parsePrimaryExpr(): nodes.Expression | undefined {
     // Primary expressions
-    const simple = this.parseFunctionCall() ??
+    const simple =
+      this.parseFunction() ??
+      this.parseFunctionCall() ??
       this.parseAssign() ??
       this.parseNumber() ??
       this.parseStringLiteral() ??
       this.parseIdentifier() ??
-      this.parseObjectLiteral() ??
-      this.parseFunction()
+      this.parseObjectLiteral()
 
     if (simple) {
       return simple

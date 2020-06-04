@@ -33,10 +33,14 @@ function isUnary(token: Token): boolean {
   if (['UNARY', 'UNARY_MATH'].includes(token.type)) {
     return true
   }
-  else if (token.type === 'OPERATOR' && ['+', '-'].includes(token.val)) {
+  else if (token.type === 'OPERATOR' && ['+', '-', '++', '--'].includes(token.val)) {
     return true
   }
   return false
+}
+
+function isBinary(token: Token | undefined): boolean {
+  return !!token && token.type === 'OPERATOR' && ['+', '-', '*', '/', '|'].includes(token.val)
 }
 
 export class Parser {
@@ -323,7 +327,7 @@ export class Parser {
     if (!left) {
       return undefined
     }
-    while (this.peekToken()?.type === 'OPERATOR') {
+    while (isBinary(this.peekToken())) {
       const opToken = this.takeToken()
       if (this.peekNewline()) {
         this.moveToNextLine()
@@ -511,10 +515,11 @@ export class Parser {
   }
 
   private parseUnaryExpr(): nodes.Expression | undefined {
-    const operator = this.peekToken()
-    if (operator && isUnary(operator)) {
+    // Check for prefix unary operation
+    const maybePrefix = this.peekToken()
+    if (maybePrefix && isUnary(maybePrefix)) {
       const pos = this.state.pos
-      this.takeToken()
+      const prefixOp = this.takeToken()
       if (this.state.inFCallImplicitArgs > 0 && this.peekSpace()) {
         // In expression like 'a - b', do not consider '- b' to be an unary
         // expression, because then we would end up parsing it as 'a(-b)'.
@@ -528,12 +533,22 @@ export class Parser {
       }
       const expr = this.parsePrimaryExpr()
       if (!expr) {
-        throw new Error(`Expected expression after unary operator '${operator.val}'`)
+        throw new Error(`Expected expression after unary operator '${prefixOp.val}'`)
       }
-      return new nodes.UnaryExpression(operator, expr)
+      return new nodes.PrefixUnaryExpression(prefixOp, expr)
     }
 
-    return this.parsePrimaryExpr()
+    const expr = this.parsePrimaryExpr()
+
+    // Check for postfix unary operation
+    if(expr && !this.peekSpace()) {
+      const maybePostfix = this.peekToken()
+      if(maybePostfix && maybePostfix.type === 'OPERATOR' && ['++', '--'].includes(maybePostfix.val)) {
+        const postfixOp = this.takeToken()
+        return new nodes.PostfixUnaryExpression(postfixOp, expr)
+      }
+    }
+    return expr
   }
 
   private parsePrimaryExpr(): nodes.Expression | undefined {

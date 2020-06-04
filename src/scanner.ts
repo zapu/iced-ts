@@ -16,6 +16,9 @@ const commonTokens : {[str: string]: TokenType} = {
 
     '\n': 'NEWLINE',
 
+    '++': 'OPERATOR',
+    '--': 'OPERATOR',
+
     'is': 'OPERATOR',
     'isnt': 'OPERATOR',
     '==': 'OPERATOR',

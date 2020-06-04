@@ -297,7 +297,7 @@ export class FunctionCall extends Expression {
   }
 }
 
-export class UnaryExpression extends Expression {
+export abstract class UnaryExpression extends Expression {
   operator: Token
   expression: Expression
 
@@ -308,7 +308,7 @@ export class UnaryExpression extends Expression {
   }
 
   emit(): string {
-    return `${this.operator.val} ${this.expression.emit()}`
+    return `${this.operator.val}${this.expression.emit()}`
   }
 
   debugEvalJS(): number {
@@ -317,6 +317,9 @@ export class UnaryExpression extends Expression {
         return this.expression.debugEvalJS()
       case '-':
         return -this.expression.debugEvalJS()
+      case '++':
+      case '--':
+        throw new Error(`Eval math not implemented for ${this.emit()}`)
       default:
         throw new Error(`Invalid evalMath on ${this.emit()}`)
     }
@@ -324,6 +327,28 @@ export class UnaryExpression extends Expression {
 
   debugEmitCommon() {
     return `${this.operator.val}${this.expression.debugEmitCommon()}`
+  }
+}
+
+export class PrefixUnaryExpression extends UnaryExpression {}
+
+export class PostfixUnaryExpression extends UnaryExpression {
+  emit(): string {
+    return `${this.expression.emit()}${this.operator.val}`
+  }
+
+  debugEvalJS(): number {
+    switch (this.operator.val) {
+      case '++':
+      case '--':
+        throw new Error(`Eval math not implemented for ${this.emit()}`)
+      default:
+        throw new Error(`Invalid evalMath on ${this.emit()}`)
+    }
+  }
+
+  debugEmitCommon() {
+    return `${this.expression.debugEmitCommon()}${this.operator.val}`
   }
 }
 

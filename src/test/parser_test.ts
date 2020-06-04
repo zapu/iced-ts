@@ -61,6 +61,11 @@ const tests: TestCase[] = [
   { input: '-\n\n  3', expected: '-3' },
   { input: '-\n\n  (2+3)', expected: '-(2 + 3)' },
 
+  { input: 'i++', expected: 'i++' },
+  { input: '++i', expected: '++i' },
+  { input: 'i = i++', expected: 'i = i++' },
+  { input: 'i = ++i', expected: 'i = ++i' },
+
   // Almost implicit function calls, but targets are not identifiers or
   // parenthesized expressions, so they end up being binary operations.
   { input: '1 + 2', expected: '1 + 2' },

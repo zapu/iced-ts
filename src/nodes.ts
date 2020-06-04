@@ -30,6 +30,35 @@ export class Parens extends Node {
   }
 }
 
+export class ReturnStatement extends Node {
+  expr: Expression | undefined
+
+  constructor(expr: Expression | undefined) {
+    super()
+    this.expr = expr
+  }
+
+  emit(): string {
+    if (this.expr) {
+      return `return ${this.expr.emit()}`
+    } else {
+      return 'return'
+    }
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    if (this.expr) {
+      return `return ${this.expr.debugEmitCommon()}`
+    } else {
+      return 'return'
+    }
+  }
+}
+
 export abstract class Expression extends Node {
 }
 

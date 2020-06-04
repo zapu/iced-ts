@@ -602,6 +602,22 @@ export class Parser {
     return this.parseBinaryExpr()
   }
 
+  private parseReturn(): nodes.Node | undefined {
+    if (this.peekToken()?.type !== 'RETURN') {
+      return undefined
+    }
+    this.takeToken()
+
+    // Expression after return is optional
+    const expr = this.parseExpression()
+    return new nodes.ReturnStatement(expr)
+  }
+
+  private parseStatement(): nodes.Node | undefined {
+    return this.parseReturn() ??
+      this.parseExpression()
+  }
+
   private parseBlock(rootBlock?: boolean) {
     const state = this.cloneState()
     const block = new nodes.Block()
@@ -665,11 +681,11 @@ export class Parser {
           }
         }
 
-        const expr = this.parseExpression()
-        if (!expr) {
+        const statement = this.parseStatement()
+        if (!statement) {
           break
         }
-        block.expressions.push(expr)
+        block.expressions.push(statement)
 
         const separator = this.peekToken()
         if (!separator) {

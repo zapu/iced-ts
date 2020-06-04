@@ -3,15 +3,21 @@ const whitespaceRxp = /^[ \t]+/
 const numberRxp = /^[0-9]+/
 const identifierRxp = /^(?!\d)([$\w\x7f-\uffff]+)/
 
-export type TokenType = 'BLOCK_START' | 'BLOCK_END' |
-    'IDENTIFIER' | 'NUMBER' | 'COMMENT' | 'NEWLINE' |
-    'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' | `,` |
-    'CLASS' | 'RETURN' | 'IF' | 'UNLESS' | '(' | ')'|
-    ';' | 'UNARY' | 'UNARY_MATH' | 'BUILTIN_PRIMARY' |
-    '{' | '}' | ':' | '[' | ']' | 'STRING' |
+export type TokenType =
+    'BLOCK_START' | 'BLOCK_END' |
+    'COMMENT' | 'NEWLINE' | 'WHITESPACE' |
+    'IDENTIFIER' | 'NUMBER' | 'STRING' |
+    'ASSIGN_OPERATOR' | 'OPERATOR' |
+    'FUNC' | 'CLASS' | 'RETURN' | 'IF' | 'UNLESS' |
+    'BUILTIN_PRIMARY' |
+    'UNARY' | 'UNARY_MATH' |
+    ',' | ';' | ':' |
+    '(' | ')' |
+    '{' | '}' |
+    '[' | ']' |
     'LONG_THIS' | 'SHORT_THIS'
 
-const commonTokens : {[str: string]: TokenType} = {
+const commonTokens: { [str: string]: TokenType } = {
     '->': 'FUNC',
     '=>': 'FUNC',
 
@@ -29,14 +35,20 @@ const commonTokens : {[str: string]: TokenType} = {
     '>': 'OPERATOR',
     '<': 'OPERATOR',
 
+    '=': 'ASSIGN_OPERATOR',
+    '+=': 'ASSIGN_OPERATOR',
+    '-=': 'ASSIGN_OPERATOR',
+    '*=': 'ASSIGN_OPERATOR',
+    '/=': 'ASSIGN_OPERATOR',
+    '^=': 'ASSIGN_OPERATOR',
+    '|=': 'ASSIGN_OPERATOR',
+
     '+': 'OPERATOR',
     '-': 'OPERATOR',
     '/': 'OPERATOR',
     '*': 'OPERATOR',
     '^': 'OPERATOR',
     '|': 'OPERATOR',
-
-    '=': "=",
 
     'return': 'RETURN',
 
@@ -62,13 +74,13 @@ const commonTokens : {[str: string]: TokenType} = {
     'typeof': 'UNARY',
     'delete': 'UNARY',
 
-    'true' : 'BUILTIN_PRIMARY',
-    'false' : 'BUILTIN_PRIMARY',
-    'undefined' : 'BUILTIN_PRIMARY',
-    'null' : 'BUILTIN_PRIMARY',
+    'true': 'BUILTIN_PRIMARY',
+    'false': 'BUILTIN_PRIMARY',
+    'undefined': 'BUILTIN_PRIMARY',
+    'null': 'BUILTIN_PRIMARY',
 
     '@': 'SHORT_THIS',
-    'this' : 'LONG_THIS',
+    'this': 'LONG_THIS',
 } as const
 
 export function isTrivia(type: TokenType) {
@@ -129,21 +141,21 @@ export class Scanner {
         return this.scanRegexp(numberRxp, 'NUMBER')
     }
 
-    private scanWhitespace() : Token | null {
+    private scanWhitespace(): Token | null {
         return this.scanRegexp(whitespaceRxp, 'WHITESPACE')
     }
 
-    private scanStringLiteral() : Token | null {
-        if(['"', '\''].includes(this.chunk[0])) {
+    private scanStringLiteral(): Token | null {
+        if (['"', '\''].includes(this.chunk[0])) {
             const qt = this.chunk[0]
             let i = 1;
-            for(; i < this.chunk.length; i++) {
+            for (; i < this.chunk.length; i++) {
                 const char = this.chunk[i]
-                if(!char) {
+                if (!char) {
                     throw new Error('endquote?')
-                } else if(char === '\n') {
+                } else if (char === '\n') {
                     throw new Error('endquote?')
-                } else if(char === '\\') {
+                } else if (char === '\\') {
                     i++; // skip next char
                 } else if (char === qt) {
                     break
@@ -198,7 +210,7 @@ export class Scanner {
 
         this.chunk = this.contents
 
-        const tokens : Token[] = []
+        const tokens: Token[] = []
         function pushToken(t: Token) {
             // console.log(t)
             tokens.push(t)

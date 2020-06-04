@@ -221,22 +221,26 @@ export abstract class Operation extends Expression {
 
 export class Assign extends Expression {
   target: Expression
+  operator: Token
   value: Expression
 
-  constructor(target: Expression, value: Expression) {
+  constructor(target: Expression, operator: Token, value: Expression) {
     super()
     this.target = target
+    this.operator = operator
     this.value = value
   }
 
   emit(): string {
-    return `${this.target.emit()} = ( ${this.value.emit()} )`
+    return `${this.target.emit()} ${this.operator.val} ( ${this.value.emit()} )`
   }
+
   debugEvalJS() {
     throw new Error("Method not implemented.")
   }
+
   debugEmitCommon(): string {
-    return `${this.target.debugEmitCommon()} = ${this.value.debugEmitCommon()}`
+    return `${this.target.debugEmitCommon()} ${this.operator.val} ${this.value.debugEmitCommon()}`
   }
 }
 

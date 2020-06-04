@@ -362,7 +362,7 @@ export class Parser {
     if (!target) {
       return undefined
     }
-    if (this.peekToken()?.type !== '=') {
+    if (this.peekToken()?.type !== 'ASSIGN_OPERATOR') {
       this.state = state
       return undefined
     }
@@ -380,7 +380,7 @@ export class Parser {
       throw new Error("Expected an expression after assignment operator")
     }
 
-    return new nodes.Assign(target, value)
+    return new nodes.Assign(target, operator, value)
   }
 
   private parseObjectLiteral(): nodes.ObjectLiteral | undefined {

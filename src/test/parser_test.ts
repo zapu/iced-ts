@@ -130,6 +130,10 @@ const tests: TestCase[] = [
   { input: 'a = 2', expected: 'a = 2' },
   { input: 'a =\n\n2', expected: 'a = 2' },
 
+  { input: 'a *= 2', expected: 'a *= 2' },
+  { input: 'a ^= 2', expected: 'a ^= 2' },
+  { input: 'a |= 2 | x', expected: 'a |= 2 | x' },
+
   // Functions
   { input: 'foo = () ->', expected: 'foo = () -> {}' },
   { input: 'foo = ->', expected: 'foo = () -> {}' },

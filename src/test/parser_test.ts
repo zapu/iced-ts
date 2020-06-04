@@ -163,7 +163,13 @@ const tests: TestCase[] = [
   { input: "  a 1,\n  2,\n    3,\n     4,\n    5", expected: "a(1,2,3,4,5)" },
   { input: "  a 1,\n  2,\n    3,\n     4,\n    5\n", expected: "a(1,2,3,4,5)" },
   { input: "a 1,\n2\n3\n", expected: "a(1,2);3" },
-  { input: "  a 1,\n  2\n  3\n", expected: "a(1,2);3" }
+  { input: "  a 1,\n  2\n  3\n", expected: "a(1,2);3" },
+
+  // @-property access
+  { input: '@hello', expected: 'this.hello' },
+  { input: '@hello = 1', expected: 'this.hello = 1' },
+  { input: '@hello()', expected: 'this.hello()' },
+  { input: '@hello(+@bye)', expected: 'this.hello(+this.bye)' },
 ]
 
 if (runAll(tests)) {

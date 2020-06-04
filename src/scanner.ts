@@ -8,7 +8,8 @@ export type TokenType = 'BLOCK_START' | 'BLOCK_END' |
     'WHITESPACE' | '=' | 'OPERATOR' | 'FUNC' | `,` |
     'CLASS' | 'RETURN' | 'IF' | 'UNLESS' | '(' | ')'|
     ';' | 'UNARY' | 'UNARY_MATH' | 'BUILTIN_PRIMARY' |
-    '{' | '}' | ':' | '[' | ']' | 'STRING'
+    '{' | '}' | ':' | '[' | ']' | 'STRING' |
+    'LONG_THIS' | 'SHORT_THIS'
 
 const commonTokens : {[str: string]: TokenType} = {
     '->': 'FUNC',
@@ -65,6 +66,9 @@ const commonTokens : {[str: string]: TokenType} = {
     'false' : 'BUILTIN_PRIMARY',
     'undefined' : 'BUILTIN_PRIMARY',
     'null' : 'BUILTIN_PRIMARY',
+
+    '@': 'SHORT_THIS',
+    'this' : 'LONG_THIS',
 } as const
 
 export function isTrivia(type: TokenType) {

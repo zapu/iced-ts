@@ -62,6 +62,57 @@ export class ReturnStatement extends Node {
 export abstract class Expression extends Node {
 }
 
+export class BuiltinPrimaryExpression extends Expression {
+  token: Token
+  constructor(token: Token) {
+    super()
+    this.token = token
+  }
+
+  emit(): string {
+    return this.token.val
+  }
+
+  debugEvalJS() {
+    switch(this.token.val) {
+      case 'true':
+        return true
+      case 'false':
+        return false
+      case 'undefined':
+        return undefined
+      case 'null':
+        return null
+      default:
+        throw new Error('unknown built-in primary expression')
+    }
+  }
+
+  debugEmitCommon() {
+    return this.token.val
+  }
+}
+
+export class ThisExpression extends Expression {
+  token: Token
+  constructor(token: Token) {
+    super()
+    this.token = token
+  }
+
+  emit(): string {
+    return 'this'
+  }
+
+  debugEvalJS() {
+    throw new Error('cannot debugEvalJS `this`')
+  }
+
+  debugEmitCommon() {
+    return 'this'
+  }
+}
+
 export class Number extends Expression {
   content: string
   constructor(content: string) {
@@ -349,6 +400,29 @@ export class PostfixUnaryExpression extends UnaryExpression {
 
   debugEmitCommon() {
     return `${this.expression.debugEmitCommon()}${this.operator.val}`
+  }
+}
+
+export class PropertyAccess extends Expression {
+  target: Expression
+  access: Expression
+
+  constructor(target: Expression, access: Expression) {
+    super()
+    this.target = target
+    this.access = access
+  }
+
+  emit(): string {
+    return `${this.target.emit()}.${this.access.emit()}`
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    return `${this.target.debugEmitCommon()}.${this.access.debugEmitCommon()}`
   }
 }
 

@@ -252,7 +252,9 @@ export class Parser {
     // Do not recurse on function call rule, we handle chained calls through a
     // loop in the rule itself.
     this.state.inFCall++
-    const target = this.parseIdentifier() ?? this.parseParentesiszedExpr()
+    const target = this.parseIdentifier() ??
+      this.parseThisAccess() ??
+      this.parseParentesiszedExpr()
     if (!target) {
       this.state = state
       return undefined
@@ -356,7 +358,7 @@ export class Parser {
 
   private parseAssign(): nodes.Assign | undefined {
     const state = this.cloneState()
-    const target = this.parseIdentifier()
+    const target = this.parseIdentifier() ?? this.parseThisAccess()
     if (!target) {
       return undefined
     }
@@ -365,6 +367,9 @@ export class Parser {
       return undefined
     }
     const operator = this.takeToken()
+
+    // TODO: Implement assignment chaining here
+    // `a = b = c = 1`
 
     if (this.peekNewline()) {
       this.moveToNextLine()
@@ -514,6 +519,24 @@ export class Parser {
     return new nodes.Function(argList, body, bindThis)
   }
 
+  private parseThisAccess(): nodes.Expression | undefined {
+    const maybeShortThis = this.peekToken()
+    if(maybeShortThis?.type === 'SHORT_THIS') {
+      const pos = this.state.pos
+      const shortThis = this.takeToken() // take '@'
+      if(this.peekSpace()) {
+        this.state.pos = pos
+        return undefined
+      }
+      const id = this.parseIdentifier()
+      if(!id) {
+        throw new Error(`unexpected ${this.peekToken()?.val} after '@'`)
+      }
+      return new nodes.PropertyAccess(new nodes.ThisExpression(shortThis), id)
+    }
+    return undefined
+  }
+
   private parseUnaryExpr(): nodes.Expression | undefined {
     // Check for prefix unary operation
     const maybePrefix = this.peekToken()
@@ -551,6 +574,14 @@ export class Parser {
     return expr
   }
 
+  private parseBuiltinPrimary(): nodes.BuiltinPrimaryExpression | undefined {
+    const maybeBP = this.peekToken()
+    if (maybeBP?.type === 'BUILTIN_PRIMARY') {
+      return new nodes.BuiltinPrimaryExpression(this.takeToken())
+    }
+    return undefined
+  }
+
   private parsePrimaryExpr(): nodes.Expression | undefined {
     // Primary expressions
     const simple =
@@ -560,7 +591,9 @@ export class Parser {
       this.parseNumber() ??
       this.parseStringLiteral() ??
       this.parseIdentifier() ??
-      this.parseObjectLiteral()
+      this.parseObjectLiteral() ??
+      this.parseBuiltinPrimary() ??
+      this.parseThisAccess()
 
     if (simple) {
       return simple

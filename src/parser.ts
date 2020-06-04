@@ -446,7 +446,7 @@ export class Parser {
 
     const state = this.cloneState()
     let defaultValue
-    if (this.peekToken()?.type === '=') {
+    if (this.peekToken()?.type === 'ASSIGN_OPERATOR' && this.peekToken()?.val === '=') {
       this.takeToken()
       defaultValue = this.parseExpression()
       if (!defaultValue) {

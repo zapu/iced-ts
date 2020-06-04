@@ -138,6 +138,7 @@ const tests: TestCase[] = [
   { input: 'foo = () ->', expected: 'foo = () -> {}' },
   { input: 'foo = ->', expected: 'foo = () -> {}' },
   { input: 'foo = (a, b) ->', expected: 'foo = (a,b) -> {}' },
+  { input: '(a = 1) ->', expected: '(a=1) -> {}' },
   { input: 'foo = (a = 1, b = 2) ->', expected: 'foo = (a=1,b=2) -> {}' },
   { input: 'foo = (a=1, b) ->', expected: 'foo = (a=1,b) -> {}' },
   { input: 'foo = (bar = () =>) ->', expected: 'foo = (bar=() => {}) -> {}' },

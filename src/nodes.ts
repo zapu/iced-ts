@@ -288,6 +288,7 @@ export class ArrayLiteral extends Node {
 export interface FunctionParam {
   param: Identifier
   defaultValue?: Expression
+  splat: boolean
 }
 
 export class Function extends Expression {
@@ -302,14 +303,19 @@ export class Function extends Expression {
     this.bindThis = bindThis
   }
 
+  emitParam(fp: FunctionParam) {
+    let ret = fp.param.emit()
+    if (fp.defaultValue) {
+      ret += `=${fp.defaultValue.emit()}`
+    }
+    if (fp.splat) {
+      ret += '...'
+    }
+    return ret
+  }
+
   emit(): string {
-    const argList = this.args.map((x) => {
-      if (x.defaultValue) {
-        return `${x.param.emit()}=${x.defaultValue.emit()}`
-      } else {
-        return x.param.emit()
-      }
-    })
+    const argList = this.args.map((x) => this.emitParam(x))
     return `(${argList.join(',')}) ${this.bindThis ? '=>' : '->'} {\n${this.body.emit()} }`
   }
 
@@ -317,14 +323,19 @@ export class Function extends Expression {
     throw new Error("Method not implemented.")
   }
 
+  emitParamCommon(fp: FunctionParam) {
+    let ret = fp.param.debugEmitCommon()
+    if (fp.defaultValue) {
+      ret += `=${fp.defaultValue.debugEmitCommon()}`
+    }
+    if (fp.splat) {
+      ret += '...'
+    }
+    return ret
+  }
+
   debugEmitCommon(): string {
-    const argList = this.args.map((x) => {
-      if (x.defaultValue) {
-        return `${x.param.debugEmitCommon()}=${x.defaultValue.debugEmitCommon()}`
-      } else {
-        return x.param.debugEmitCommon()
-      }
-    })
+    const argList = this.args.map((x) => this.emitParamCommon(x))
     return `(${argList.join(',')}) ${this.bindThis ? '=>' : '->'} {${this.body.debugEmitCommon()}}`
   }
 }

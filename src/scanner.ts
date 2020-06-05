@@ -15,6 +15,7 @@ export type TokenType =
     '(' | ')' |
     '{' | '}' |
     '[' | ']' |
+    '.' | '...' |
     'LONG_THIS' | 'SHORT_THIS'
 
 const commonTokens: { [str: string]: TokenType } = {
@@ -81,6 +82,9 @@ const commonTokens: { [str: string]: TokenType } = {
 
     '@': 'SHORT_THIS',
     'this': 'LONG_THIS',
+
+    '...': '...',
+    '.': '.',
 } as const
 
 export function isTrivia(type: TokenType) {

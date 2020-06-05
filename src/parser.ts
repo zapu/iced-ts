@@ -445,7 +445,8 @@ export class Parser {
     }
 
     const state = this.cloneState()
-    let defaultValue
+    let defaultValue = undefined
+    let splat = false
     if (this.peekToken()?.type === 'ASSIGN_OPERATOR' && this.peekToken()?.val === '=') {
       this.takeToken()
       defaultValue = this.parseExpression()
@@ -453,9 +454,14 @@ export class Parser {
         this.state = state
         return undefined
       }
+    } else {
+      splat = this.peekToken()?.type === '...'
+      if(splat) {
+        this.takeToken()
+      }
     }
 
-    return { param, defaultValue }
+    return { param, defaultValue, splat }
   }
 
   private parseFunction(): nodes.Function | undefined {

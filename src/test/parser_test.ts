@@ -153,6 +153,10 @@ const tests: TestCase[] = [
 
   { input: 'foo = (bar = () =>)', expected: 'foo = (bar = () => {})' },
 
+  { input: 'foo = (c...) ->', expected: 'foo = (c...) -> {}'},
+  { input: 'foo = (a...,c...) ->', expected: 'foo = (a...,c...) -> {}'},
+  { input: 'foo = (a,b,c...) ->', expected: 'foo = (a,b,c...) -> {}'},
+
   { input: 'setTimeout (-> log(10)), 5', expected: 'setTimeout((() -> {log(10)}),5)' },
   { input: 'delay 5, (-> log(10))', expected: 'delay(5,(() -> {log(10)}))' },
   { input: 'delay 5, -> log(10)', expected: 'delay(5,() -> {log(10)})' },

@@ -175,10 +175,22 @@ export class Parser {
     }
   }
 
+  private parseFunctionCallArgument(): nodes.Expression | nodes.SplatExpression | undefined {
+    const expr = this.parseExpression()
+    if(!expr) {
+      return undefined
+    }
+    if (this.peekToken()?.type === '...') {
+      this.takeToken()
+      return new nodes.SplatExpression(expr)
+    }
+    return expr
+  }
+
   private parseImplicitFunctionCallArguments(): nodes.Expression[] | undefined {
     const state = this.cloneState()
     this.state.inFCallImplicitArgs++
-    const firstArg = this.parseExpression()
+    const firstArg = this.parseFunctionCallArgument()
     if (!firstArg) {
       // Implicit function calls need at least one argument in the same line as
       // function call target
@@ -227,15 +239,15 @@ export class Parser {
         }
       }
 
-      const nextArg = this.parseExpression()
-      if (!nextArg) {
+      const expr = this.parseFunctionCallArgument()
+      if (!expr) {
         if (hadComma) {
           throw new Error('Expected another expression after comma')
         } else {
           break
         }
       }
-      args.push(nextArg)
+      args.push(expr)
 
       hadComma = this.peekToken()?.type === ','
       if (hadComma) {
@@ -288,7 +300,7 @@ export class Parser {
           this.moveToNextLine()
         }
         const args: nodes.Expression[] = []
-        const firstArg = this.parseExpression()
+        const firstArg = this.parseFunctionCallArgument()
         if (firstArg) {
           args.push(firstArg)
           while (this.peekToken()?.type === ',') {
@@ -296,7 +308,7 @@ export class Parser {
             if (this.peekNewline()) {
               this.moveToNextLine()
             }
-            const arg = this.parseExpression()
+            const arg = this.parseFunctionCallArgument()
             if (!arg) {
               throw new Error("Expected an expression after ',' in function call")
             }

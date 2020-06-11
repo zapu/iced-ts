@@ -62,6 +62,27 @@ export class ReturnStatement extends Node {
 export abstract class Expression extends Node {
 }
 
+export class SplatExpression extends Expression {
+  expr: Expression
+
+  constructor(expr: Expression) {
+    super()
+    this.expr = expr
+  }
+
+  emit(): string {
+    return `${this.expr.emit()}...`
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    return `${this.expr.debugEmitCommon()}...`
+  }
+}
+
 export class BuiltinPrimaryExpression extends Expression {
   token: Token
   constructor(token: Token) {

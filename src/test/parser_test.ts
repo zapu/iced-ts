@@ -110,6 +110,14 @@ const tests: TestCase[] = [
   { input: '(foo)(a b)', expected: '(foo)(a(b))' },
   { input: '(foo)(a, b)', expected: '(foo)(a,b)' },
 
+  // splats
+  { input: 'foo arr...', expected: 'foo(arr...)' },
+  { input: 'foo 1, 2,arr...', expected: 'foo(1,2,arr...)' },
+  { input: 'foo a...,b...', expected: 'foo(a...,b...)' },
+  { input: 'foo(arr...)', expected: 'foo(arr...)' },
+  { input: 'foo(1, 2,arr...)', expected: 'foo(1,2,arr...)' },
+  { input: 'foo(a...,b...)', expected: 'foo(a...,b...)' },
+
   // Recursive or chained function calls (target is a function call)
   { input: '(foo())(3)', expected: '(foo())(3)' },
   { input: '(foo(2))(3)', expected: '(foo(2))(3)' },

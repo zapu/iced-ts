@@ -383,11 +383,28 @@ export class Parser {
     // TODO: Implement assignment chaining here
     // `a = b = c = 1`
 
+    let exprIndent: number | undefined = undefined
     if (this.peekNewline()) {
-      this.moveToNextLine()
+      const indent = this.moveToNextLine()
+
+      // TODO: CoffeeScript doesn't care if object literals start on the same
+      // indentation level, things like:
+
+      // obj =
+      // a : 1
+      // b : 2
+      // c = 3
+
+      // are legal, and parse to: `obj = {a : 1, b : 2}; c = 3;`.
+      if (indent >= this.currentIndentLevel()) {
+        // Assignment starts a new "implicit block". Important for things like
+        // object literals, which parse differently if they were started in the
+        // same line, compared to next line.
+        exprIndent = indent
+      }
     }
 
-    const value = this.parseExpression()
+    const value = this.parseExpression(exprIndent)
     if (!value) {
       throw new Error("Expected an expression after assignment operator")
     }
@@ -395,35 +412,49 @@ export class Parser {
     return new nodes.Assign(target, operator, value)
   }
 
-  private parseObjectLiteral(): nodes.ObjectLiteral | undefined {
-    if (this.peekToken()?.type !== '{') {
-      return undefined
-    }
-
-    // Advance past newlines
-    while (this.peekToken()?.type === 'NEWLINE') {
+  private parseObjectLiteral(exprIndent?: number): nodes.ObjectLiteral | undefined {
+    let hadOpenBracket = false
+    let currentIndent = this.currentIndentLevel()
+    if (this.peekToken()?.type === '{') {
       this.takeToken()
+      hadOpenBracket = true
+
+      // Advance past newlines
+      if (this.peekNewline()) {
+        currentIndent = this.moveToNextLine()
+      }
     }
 
-    const state = this.cloneState()
-    this.takeToken()
-
-    const obj = new nodes.ObjectLiteral()
-
+    let obj : nodes.ObjectLiteral | undefined = undefined
     for (; ;) {
-      const id = this.parseIdentifier() ?? this.parseStringLiteral()
+      const id = this.parseIdentifier() ?? this.parseStringLiteral() ?? this.parseNumber()
       if (!id) {
-        throw new Error(`Expected string literal or identifier in object, found: ${this.peekToken()?.val}`)
+        if (hadOpenBracket) {
+          throw new Error(`Expected string literal, number literal, or identifier in object, found: ${this.peekToken()?.val}`)
+        } else {
+          break
+        }
       }
 
+      const state = this.cloneState()
       const colon = this.takeToken()
       if (colon.type !== ':') {
-        throw new Error(`Expected ':', got ${colon.val}`)
+        if (hadOpenBracket || obj) {
+          throw new Error(`Expected ':', got ${colon.val}`)
+        } else {
+          this.state = state
+          break
+        }
       }
 
       const expr = this.parseExpression()
       if (!expr) {
-        throw new Error("Expected expression")
+        throw new Error("Expected expression after ':'")
+      }
+
+      if (!obj) {
+        // First key-value pair, create ObjectLiteral
+        obj = new nodes.ObjectLiteral()
       }
 
       obj.properties.push({ propertyId: id, value: expr })
@@ -445,7 +476,6 @@ export class Parser {
         continue
       }
     }
-
 
     return obj
   }
@@ -600,8 +630,23 @@ export class Parser {
     return undefined
   }
 
-  private parsePrimaryExpr(): nodes.Expression | undefined {
-    // Primary expressions
+  private parsePrimaryExpr(exprIndent?: number): nodes.Expression | undefined {
+    // `exprIndent` is used in assignments and object literals - set to indent
+    // level when assignment creates a new "implicit block" for upcoming
+    // expression, e.g.:
+
+    // a = # <- implicit block starts with the following newline
+    //   b : 1
+    //   c : 2
+
+    // or:
+
+    // a = {
+    //   b : # <- implicit block starts with the following newline
+    //     c : d
+    // }
+
+    // Primary expressions:
     const simple =
       this.parseFunction() ??
       this.parseFunctionCall() ??
@@ -609,7 +654,7 @@ export class Parser {
       this.parseNumber() ??
       this.parseStringLiteral() ??
       this.parseIdentifier() ??
-      this.parseObjectLiteral() ??
+      this.parseObjectLiteral(exprIndent) ??
       this.parseBuiltinPrimary() ??
       this.parseThisAccess()
 
@@ -664,8 +709,8 @@ export class Parser {
     return new nodes.Parens(expr)
   }
 
-  private parseExpression(): nodes.Expression | undefined {
-    return this.parseBinaryExpr()
+  private parseExpression(exprIndent?: number): nodes.Expression | undefined {
+    return this.parseBinaryExpr(exprIndent)
   }
 
   private parseReturn(): nodes.Node | undefined {
@@ -804,7 +849,7 @@ export class Parser {
   public parse() {
     const block = this.parseBlock(true /* rootBlock */)
 
-    // FIXME: very inefficient to do both peekToken and takeToken in a loop.
+    // TODO: very inefficient to do both peekToken and takeToken in a loop.
     // This is probably not the only place that does this.
     while(this.peekToken()) {
       const token = this.takeToken()

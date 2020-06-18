@@ -3,7 +3,23 @@ import { Parser } from './parser'
 import * as util from 'util'
 
 async function main() {
-  let contents = `(a = 1) ->`
+  let contents = `
+a = {
+  obj : {
+ c : 2
+  }
+}
+`
+
+  contents = `
+{
+  a : 2,
+  obj : {
+    b : 3
+  ,
+  c : 4 }
+}
+`
 
   console.log('input:')
   console.log(contents.replace(/ /g, '·').replace(/\n/g, '⏎\n'))
@@ -20,6 +36,8 @@ async function main() {
 
   console.log('nodes (inspect):')
   console.log(util.inspect(nodes, false, null))
+
+  console.log('common:', nodes?.debugEmitCommon())
 
   console.log('emit:')
   console.log(nodes?.emit())

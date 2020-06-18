@@ -4,7 +4,8 @@ import * as util from 'util'
 
 interface TestCase {
   input: string
-  expected: string | undefined
+  expected?: string
+  error?: boolean
 }
 
 function runAll(tests: TestCase[]) {
@@ -26,7 +27,10 @@ function runAll(tests: TestCase[]) {
 
       const commonEmit = nodes?.debugEmitCommon()
 
-      if (test.expected !== commonEmit) {
+      if (test.error) {
+        console.error(`[x] Failed for input: "${inputCon}": expected error, got '${commonEmit}'`)
+        success = false
+      } else if (test.expected !== commonEmit) {
         console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got '${commonEmit}'`)
         success = false
       } else {
@@ -34,9 +38,13 @@ function runAll(tests: TestCase[]) {
       }
 
     } catch (err) {
-      console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got exception: ${err.message}`)
-      console.error(err)
-      success = false
+      if (test.error) {
+        console.log(`[+] "${inputCon} -> error as expected: "${err?.message}"`)
+      } else {
+        console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got exception: ${err.message}`)
+        console.error(err)
+        success = false
+      }
     }
   }
   return success
@@ -153,9 +161,9 @@ const tests: TestCase[] = [
 
   { input: 'foo = (bar = () =>)', expected: 'foo = (bar = () => {})' },
 
-  { input: 'foo = (c...) ->', expected: 'foo = (c...) -> {}'},
-  { input: 'foo = (a...,c...) ->', expected: 'foo = (a...,c...) -> {}'},
-  { input: 'foo = (a,b,c...) ->', expected: 'foo = (a,b,c...) -> {}'},
+  { input: 'foo = (c...) ->', expected: 'foo = (c...) -> {}' },
+  { input: 'foo = (a...,c...) ->', expected: 'foo = (a...,c...) -> {}' },
+  { input: 'foo = (a,b,c...) ->', expected: 'foo = (a,b,c...) -> {}' },
 
   { input: 'setTimeout (-> log(10)), 5', expected: 'setTimeout((() -> {log(10)}),5)' },
   { input: 'delay 5, (-> log(10))', expected: 'delay(5,(() -> {log(10)}))' },
@@ -171,7 +179,125 @@ const tests: TestCase[] = [
   // Object literals
   { input: '{"a":1}', expected: '{"a": 1}' },
   { input: '{a:1}', expected: '{a: 1}' },
-  { input: '{"hi":1,a :2}', expected: '{"hi": 1, a: 2}'},
+  { input: '{2:1}', expected: '{2: 1}' },
+  { input: '{"hi":1,a :2}', expected: '{"hi": 1, a: 2}' },
+
+  { input: '{\n  a : 2\n}', expected: '{a: 2}' },
+  { input: '{\n  a : 2\n  b : 2\n}', expected: '{a: 2, b: 2}' },
+  { input: '{\n  a : 2,\n  b : 2\n}', expected: '{a: 2, b: 2}' },
+  { input: '{\n  a : 2,\n  obj : {\n    b : 3\n    c : 4 }\n}', expected: '{a: 2, obj: {b: 3, c: 4}}' },
+  { input: '{\n  a : 2,\n  obj : {\n    b : 3,\n    c : 4 }\n}', expected: '{a: 2, obj: {b: 3, c: 4}}' },
+
+  {
+    input: `
+{
+  a : 2,
+  obj : {
+    b : 3
+    ,
+    c : 4 }
+}
+`,
+    expected: '{a: 2, obj: {b: 3, c: 4}}'
+  },
+  {
+    input: `
+{
+  a : 2,
+  obj : {
+    b : 3
+   ,
+   c : 4 }
+}
+`,
+    expected: '{a: 2, obj: {b: 3, c: 4}}'
+  },
+  {
+    input: `
+{
+  a : 2,
+  obj : {
+    b : 3
+  ,
+  c : 4 }
+}
+`,
+    expected: '{a: 2, obj: {b: 3, c: 4}}'
+  },
+  {
+    input: `
+{
+  a : 2,
+  obj : {
+    b : 3
+  ,
+    c : 4 }
+}
+`,
+    error: true
+  },
+  {
+    input: `
+{
+  a : 2,
+  obj : {
+    b : 3
+ ,
+ c : 4 }
+}
+`,
+    error: true
+  },
+  {
+    input: `
+a = {
+  a : "hello"
+  obj :
+    2
+  c : 3
+}`,
+    expected: 'a = {a: "hello", obj: 2, c: 3}'
+  },
+  {
+    input: `
+a = {
+  a : "hello"
+  obj :
+  2
+  c : 3
+}`,
+    error: true
+  },
+  {
+    input: `
+a = {
+  obj : {
+ c : 2
+  }
+}`,
+    error: true,
+  },
+  {
+    input: `
+{
+  a : 2
+  b : {
+    x : 2
+}
+}`,
+    expected: '{a: 2, b: {x: 2}}'
+  },
+  {
+    input: `
+foo = {
+  a : 2
+  ,
+  b : 3
+  }
+`,
+    expected: 'foo = {a: 2, b: 3}'
+  },
+
 
   // Dark Souls of language parsers
   { input: "a 1,\n2", expected: "a(1,2)" },

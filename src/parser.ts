@@ -1,6 +1,7 @@
 import { Token, isTrivia } from './scanner'
 import * as nodes from './nodes'
 import { start } from 'repl'
+import { exception } from 'console'
 
 const operatorPriority: { [k: string]: number } = {
   '+': 50,
@@ -27,6 +28,18 @@ interface ParserState {
   // Set to true when `moveToNextLine` hits end of token stream when looking
   // for a non-whitespace and non-newline token.
   eof: boolean
+}
+
+// Additional state that's passed to grammar rule functions when parsing an
+// expression. Has to be passed starting from `parseExpression` through other
+// rules all the way to terminal rules. Some rules will break propagation of
+// some variables - like parenthesized expression.
+interface ParseExpressionState {
+  // When expression starts on a new line, e.g. from assignment or value in
+  // object literal. Affects how object literals are parsed - when omitting
+  // brackets, inline object literals have different parsing rules than object
+  // literal starting on a new line, with optional indentation.
+  exprIndent?: number
 }
 
 function isUnary(token: Token): boolean {
@@ -133,6 +146,16 @@ export class Parser {
     return undefined
   }
 
+  private peekTokenThroughNewlines(): Token | undefined {
+    for (let i = this.state.pos; i < this.tokens.length; i++) {
+      const ttype = this.tokens[i].type
+      if (!isTrivia(ttype) && ttype !== 'NEWLINE') {
+        return this.tokens[i]
+      }
+    }
+    return undefined
+  }
+
   private takeToken(): Token {
     for (let i = this.state.pos; i < this.tokens.length; i++) {
       if (!isTrivia(this.tokens[i].type)) {
@@ -177,7 +200,7 @@ export class Parser {
 
   private parseFunctionCallArgument(): nodes.Expression | nodes.SplatExpression | undefined {
     const expr = this.parseExpression()
-    if(!expr) {
+    if (!expr) {
       return undefined
     }
     if (this.peekToken()?.type === '...') {
@@ -336,8 +359,8 @@ export class Parser {
     return ret
   }
 
-  private parseBinaryExpr(): nodes.Expression | undefined {
-    let left = this.parseUnaryExpr()
+  private parseBinaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
+    let left = this.parseUnaryExpr(opts)
     if (!left) {
       return undefined
     }
@@ -383,7 +406,7 @@ export class Parser {
     // TODO: Implement assignment chaining here
     // `a = b = c = 1`
 
-    let exprIndent: number | undefined = undefined
+    let opts: ParseExpressionState | undefined = undefined
     if (this.peekNewline()) {
       const indent = this.moveToNextLine()
 
@@ -400,11 +423,11 @@ export class Parser {
         // Assignment starts a new "implicit block". Important for things like
         // object literals, which parse differently if they were started in the
         // same line, compared to next line.
-        exprIndent = indent
+        opts = { exprIndent: indent }
       }
     }
 
-    const value = this.parseExpression(exprIndent)
+    const value = this.parseExpression(opts)
     if (!value) {
       throw new Error("Expected an expression after assignment operator")
     }
@@ -412,20 +435,132 @@ export class Parser {
     return new nodes.Assign(target, operator, value)
   }
 
-  private parseObjectLiteral(exprIndent?: number): nodes.ObjectLiteral | undefined {
-    let hadOpenBracket = false
-    let currentIndent = this.currentIndentLevel()
-    if (this.peekToken()?.type === '{') {
-      this.takeToken()
-      hadOpenBracket = true
+  private parseObjectLiteralBrackets(opts?: ParseExpressionState): nodes.ObjectLiteral | undefined {
+    if (this.peekToken()?.type !== '{') {
+      return undefined
+    }
 
-      // Advance past newlines
+    this.takeToken()
+    let lastIndent = opts?.exprIndent ?? this.currentIndentLevel()
+    let minIndent = lastIndent
+
+    if (this.peekNewline()) {
+      // Should throw an error on unexpected un-indent here (indent level
+      // smaller than current block).
+      const firstIndent = this.moveToNextLine()
+      if (firstIndent < lastIndent) {
+        throw new Error('Missing indent. Object literal body needs at least same indentation as parent expression.')
+      }
+      lastIndent = firstIndent
+    }
+
+    const ret = new nodes.ObjectLiteral()
+    for (; ;) {
+      if (this.peekToken()?.type === '}') {
+        // End of object.
+        break
+      }
+      const id = this.parseIdentifier() ?? this.parseNumber() ?? this.parseStringLiteral()
+      if (!id) {
+        throw new Error(`Expected identifier, number, or string literal after '{', got: '${this.peekToken()?.val}'`)
+      }
+      const colon = this.takeToken()
+      if (colon.type !== ':') {
+        throw new Error(`Expected ':' after identifier,  got '${colon.val}`)
+      }
+      let exprOpts: ParseExpressionState | undefined = undefined
       if (this.peekNewline()) {
-        currentIndent = this.moveToNextLine()
+        const exprIndent = this.moveToNextLine()
+        if (exprIndent <= lastIndent) {
+          throw new Error('Missing indent. When object value starts on separate line, it has to be indented forward.')
+        }
+        exprOpts = { exprIndent }
+      } else {
+        exprOpts = { exprIndent : lastIndent }
+      }
+      const value = this.parseExpression(exprOpts)
+      if (!value) {
+        throw new Error(`Expected an expression after ':'`)
+      }
+      ret.properties.push({
+        propertyId: id,
+        value: value,
+      })
+
+      // Consume optional comma, checking for indentation rules.
+      if (this.peekTokenThroughNewlines()?.type === ',') {
+        if (this.peekNewline()) {
+          const commaIndent = this.moveToNextLine()
+          if (commaIndent < lastIndent) {
+            // preCommaIndent does not generate "unexpected indent" errors, but
+            // affects current implicit indentation level. Stuff like this is
+            // legal:
+
+            // a = {
+            //   a : 1
+            //          ,
+            //   b : 2
+            // }
+
+            // but something like this is not, because comma "brought the
+            // indentation level back".
+
+            // a = {
+            //     a : 1
+            //   ,
+            //     b : 2
+            // }
+            lastIndent = commaIndent
+          }
+          if (commaIndent < minIndent) {
+            // But if there is a minimum indent for the block, commma can't be
+            // farther back than that.
+            throw new Error('Missing indentation. Everything in object block has to be indented at least to that block.')
+          }
+        }
+
+        const comma = this.takeToken()
+        if (comma.type !== ',') {
+          throw new Error(`BUG: Tried to consume ',', ended up with: ${comma.val} (${comma.type})`)
+        }
+      }
+
+      if (this.peekNewline()) {
+        const newIndent = this.moveToNextLine()
+        if (this.peekToken()?.type === '}') {
+          // End of object. We don't care about indentation of '}'.
+          break
+        }
+
+        if (newIndent > lastIndent) {
+          throw new Error(`Unexpected indent. Key in an object body has to be indented at least to the level of previous object.`)
+        }
+        lastIndent = newIndent
       }
     }
 
-    let obj : nodes.ObjectLiteral | undefined = undefined
+    const closingBr = this.takeToken()
+    if (closingBr.type !== '}') {
+      throw new Error(`Expected '}' to close the object, got: '${closingBr.val}'`)
+    }
+
+    return ret
+  }
+
+  private parseObjectInline(opts?: ParseExpressionState): nodes.ObjectLiteral | undefined {
+    return undefined
+  }
+
+  private parseObjectLiteral(opts?: ParseExpressionState): nodes.ObjectLiteral | undefined {
+    let hadOpenBracket = false
+    let currentIndent = this.currentIndentLevel()
+
+    const maybeBrackets = this.parseObjectLiteralBrackets(opts)
+    if (maybeBrackets) {
+      return maybeBrackets
+    }
+
+    let obj: nodes.ObjectLiteral | undefined = undefined
     for (; ;) {
       const id = this.parseIdentifier() ?? this.parseStringLiteral() ?? this.parseNumber()
       if (!id) {
@@ -498,7 +633,7 @@ export class Parser {
       }
     } else {
       splat = this.peekToken()?.type === '...'
-      if(splat) {
+      if (splat) {
         this.takeToken()
       }
     }
@@ -569,15 +704,15 @@ export class Parser {
 
   private parseThisAccess(): nodes.Expression | undefined {
     const maybeShortThis = this.peekToken()
-    if(maybeShortThis?.type === 'SHORT_THIS') {
+    if (maybeShortThis?.type === 'SHORT_THIS') {
       const pos = this.state.pos
       const shortThis = this.takeToken() // take '@'
-      if(this.peekSpace()) {
+      if (this.peekSpace()) {
         this.state.pos = pos
         return undefined
       }
       const id = this.parseIdentifier()
-      if(!id) {
+      if (!id) {
         throw new Error(`unexpected ${this.peekToken()?.val} after '@'`)
       }
       return new nodes.PropertyAccess(new nodes.ThisExpression(shortThis), id)
@@ -585,7 +720,7 @@ export class Parser {
     return undefined
   }
 
-  private parseUnaryExpr(): nodes.Expression | undefined {
+  private parseUnaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
     // Check for prefix unary operation
     const maybePrefix = this.peekToken()
     if (maybePrefix && isUnary(maybePrefix)) {
@@ -609,12 +744,12 @@ export class Parser {
       return new nodes.PrefixUnaryExpression(prefixOp, expr)
     }
 
-    const expr = this.parsePrimaryExpr()
+    const expr = this.parsePrimaryExpr(opts)
 
     // Check for postfix unary operation
-    if(expr && !this.peekSpace()) {
+    if (expr && !this.peekSpace()) {
       const maybePostfix = this.peekToken()
-      if(maybePostfix && maybePostfix.type === 'OPERATOR' && ['++', '--'].includes(maybePostfix.val)) {
+      if (maybePostfix && maybePostfix.type === 'OPERATOR' && ['++', '--'].includes(maybePostfix.val)) {
         const postfixOp = this.takeToken()
         return new nodes.PostfixUnaryExpression(postfixOp, expr)
       }
@@ -630,7 +765,7 @@ export class Parser {
     return undefined
   }
 
-  private parsePrimaryExpr(exprIndent?: number): nodes.Expression | undefined {
+  private parsePrimaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
     // `exprIndent` is used in assignments and object literals - set to indent
     // level when assignment creates a new "implicit block" for upcoming
     // expression, e.g.:
@@ -654,7 +789,7 @@ export class Parser {
       this.parseNumber() ??
       this.parseStringLiteral() ??
       this.parseIdentifier() ??
-      this.parseObjectLiteral(exprIndent) ??
+      this.parseObjectLiteral(opts) ??
       this.parseBuiltinPrimary() ??
       this.parseThisAccess()
 
@@ -709,8 +844,8 @@ export class Parser {
     return new nodes.Parens(expr)
   }
 
-  private parseExpression(exprIndent?: number): nodes.Expression | undefined {
-    return this.parseBinaryExpr(exprIndent)
+  private parseExpression(opts?: ParseExpressionState): nodes.Expression | undefined {
+    return this.parseBinaryExpr(opts)
   }
 
   private parseReturn(): nodes.Node | undefined {
@@ -780,7 +915,7 @@ export class Parser {
           block.indent = blockIndent
         } else {
           if (indent < blockIndent) {
-            if(rootBlock && !this.state.eof) {
+            if (rootBlock && !this.state.eof) {
               // root block cannot end with de-indent
               throw new Error("Missing indentation in root block")
             }
@@ -851,9 +986,9 @@ export class Parser {
 
     // TODO: very inefficient to do both peekToken and takeToken in a loop.
     // This is probably not the only place that does this.
-    while(this.peekToken()) {
+    while (this.peekToken()) {
       const token = this.takeToken()
-      if(token.type !== 'NEWLINE') {
+      if (token.type !== 'NEWLINE') {
         // TODO: Ideally we would try to resume parsing here to try to tell
         // user what happened. E.g. maybe there's a letfover expression here
         // somehow.

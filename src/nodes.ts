@@ -266,7 +266,7 @@ export class Assign extends Expression {
 }
 
 export interface PropertyValuePair {
-  propertyId: Identifier | StringLiteral
+  propertyId: Identifier | StringLiteral | Number
   value: Expression
 }
 

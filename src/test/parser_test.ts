@@ -297,7 +297,42 @@ foo = {
 `,
     expected: 'foo = {a: 2, b: 3}'
   },
-
+  {
+    input: `
+  {
+    a : 2
+  ,
+  b : x
+  }
+`,
+    expected: '{a: 2, b: x}'
+  },
+  {
+    input: `
+  {
+    a : 2
+ ,
+  b : x
+  }
+`,
+    error: true
+  },
+  {
+    input: `
+a =
+  { a : 2, b : 3,
+  c : 4 }
+`,
+    expected: 'a = {a: 2, b: 3, c: 4}'
+  },
+  {
+    input: `
+a =
+  { a : 2, b : 3,
+ c : 4 }
+`,
+    error: true
+  },
 
   // Dark Souls of language parsers
   { input: "a 1,\n2", expected: "a(1,2)" },

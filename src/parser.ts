@@ -441,6 +441,7 @@ export class Parser {
     }
 
     this.takeToken()
+
     let lastIndent = opts?.exprIndent ?? this.currentIndentLevel()
     let minIndent = lastIndent
 
@@ -535,6 +536,9 @@ export class Parser {
         if (newIndent > lastIndent) {
           throw new Error(`Unexpected indent. Key in an object body has to be indented at least to the level of previous object.`)
         }
+        if (newIndent < minIndent) {
+          throw new Error('Missing indentation. Everything in object block has to be indented at least to that block.')
+        }
         lastIndent = newIndent
       }
     }
@@ -558,6 +562,11 @@ export class Parser {
     const maybeBrackets = this.parseObjectLiteralBrackets(opts)
     if (maybeBrackets) {
       return maybeBrackets
+    }
+
+    if (!opts?.exprIndent) {
+      // Inline object and not in bracket, has to be the special rule for
+      // one-liner objects.
     }
 
     let obj: nodes.ObjectLiteral | undefined = undefined

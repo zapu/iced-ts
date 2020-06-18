@@ -4,21 +4,9 @@ import * as util from 'util'
 
 async function main() {
   let contents = `
-a = {
-  obj : {
- c : 2
-  }
-}
-`
-
-  contents = `
-{
-  a : 2,
-  obj : {
-    b : 3
-  ,
-  c : 4 }
-}
+  foo = ({
+    a : 1,
+    b : 2})
 `
 
   console.log('input:')

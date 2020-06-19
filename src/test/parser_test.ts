@@ -118,6 +118,8 @@ const tests: TestCase[] = [
   { input: '(foo)(a b)', expected: '(foo)(a(b))' },
   { input: '(foo)(a, b)', expected: '(foo)(a,b)' },
 
+  { input: 'foo\n  20', error: true },
+
   // splats
   { input: 'foo arr...', expected: 'foo(arr...)' },
   { input: 'foo 1, 2,arr...', expected: 'foo(1,2,arr...)' },
@@ -424,6 +426,18 @@ a =
   a: b: c: d
 `,
     expected: 'a = {hi: {10: 3}, a: {b: {c: d}}}'
+  },
+  {
+    input: `foo hello: 'world', test: 10\nfoo2()`,
+    expected: `foo({hello: 'world', test: 10});foo2()`
+  },
+  {
+    input: `
+foo
+  hello : world
+  'hello': 50221
+  `,
+    expected: `foo({hello: world, 'hello': 50221})`
   },
 
   // Dark Souls of language parsers

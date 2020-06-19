@@ -4,10 +4,9 @@ import * as util from 'util'
 
 async function main() {
   let contents = `
-obj =
-a : 1
-b : 2
-c = 3
+foo
+  hello : world
+  'hello': 50221
 `
 
   console.log('input:')

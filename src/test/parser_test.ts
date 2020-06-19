@@ -333,6 +333,98 @@ a =
 `,
     error: true
   },
+  {
+    input: `
+a = b : 1,
+c : 2
+`,
+    expected: 'a = {b: 1, c: 2}'
+  },
+  {
+    input: `
+  a = b : 1,
+  c : 2
+`,
+    expected: 'a = {b: 1, c: 2}'
+  },
+  {
+    input: `
+a = b : 1
+c : 2`,
+    expected: 'a = {b: 1};{c: 2}'
+  },
+  {
+    input: `
+  a = b : 1
+  c : 2`,
+    expected: 'a = {b: 1};{c: 2}'
+  },
+  {
+    input: `
+    a = b : 1,
+    c : 2
+    hello()`,
+    expected: 'a = {b: 1, c: 2};hello()'
+  },
+  {
+    input: `
+  a = b : 1,
+  c : 2`,
+    expected: 'a = {b: 1, c: 2}'
+  },
+  {
+    input: `
+obj =
+a : 1
+b : 2
+c = 3`,
+    expected: 'obj = {a: 1, b: 2};c = 3'
+  },
+  {
+    input: `
+  obj =
+  a : 1
+  b : 2
+  c = 3`,
+    expected: 'obj = {a: 1, b: 2};c = 3'
+  },
+  {
+    input: `
+  a = b : 1
+    c : 2`,
+    error: true
+  },
+  {
+    input: `
+    a = b: 1, c:2
+    hello()`,
+    expected: 'a = {b: 1, c: 2};hello()'
+  },
+  {
+    input: `
+  a =
+    hello :
+      world : 2`,
+    expected: 'a = {hello: {world: 2}}'
+  },
+  {
+    input: `
+  a =
+    hello :
+      world : 2
+    hi:
+      welt: 3`,
+    expected: 'a = {hello: {world: 2}, hi: {welt: 3}}'
+  },
+  {
+    input: `
+a =
+  hi:
+    10: 3
+  a: b: c: d
+`,
+    expected: 'a = {hi: {10: 3}, a: {b: {c: d}}}'
+  },
 
   // Dark Souls of language parsers
   { input: "a 1,\n2", expected: "a(1,2)" },

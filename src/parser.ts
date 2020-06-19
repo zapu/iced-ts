@@ -130,7 +130,7 @@ export class Parser {
     }
 
     if (!inBlock && indent < this.currentIndentLevel()) {
-      throw new Error("missing indent")
+      throw new Error(`missing indent, found: ${indent}, expected at least ${this.currentIndentLevel()}`)
     }
 
     this.state.pos = pos
@@ -435,17 +435,36 @@ export class Parser {
     return new nodes.Assign(target, operator, value)
   }
 
-  private parseObjectLiteralBrackets(opts?: ParseExpressionState): nodes.ObjectLiteral | undefined {
-    if (this.peekToken()?.type !== '{') {
-      return undefined
+  private parseObjectLiteral(opts?: ParseExpressionState): nodes.ObjectLiteral | undefined {
+    let isBracketed = false
+    if (this.peekToken()?.type === '{') {
+      // '{' always starts an object, making the parsing more straightforward
+      // here. We will rarely have to unwind everything and return undefined,
+      // usually unexpected tokens will be syntax errors.
+      this.takeToken()
+      isBracketed = true
+    } else {
+      // We need to lookahead enough to see if it resembles object literal.
+      // TODO: Speed-up with more complicated peek instead of cloning state.
+      const state = this.cloneState()
+      const hasKey = this.parseIdentifier() ?? this.parseNumber() ?? this.parseStringLiteral()
+      if (!hasKey) {
+        return undefined
+      }
+      const hasColon = this.peekToken()?.type === ':'
+      this.state = state
+      if (!hasColon) {
+        return undefined
+      }
     }
 
-    this.takeToken()
+    // Object starts on the same line in e.g. assignment, function call argument list etc.
+    let inlineObject = (opts?.exprIndent) === undefined
 
     let lastIndent = opts?.exprIndent ?? this.currentIndentLevel()
     let minIndent = lastIndent
 
-    if (this.peekNewline()) {
+    if (isBracketed && this.peekNewline()) {
       // Should throw an error on unexpected un-indent here (indent level
       // smaller than current block).
       const firstIndent = this.moveToNextLine()
@@ -455,20 +474,48 @@ export class Parser {
       lastIndent = firstIndent
     }
 
+    // For "unbrackated rule", save state before every newline, in case we stop
+    // matching "key : value" and we need to roll back and break out. This is
+    // for cases where de-indent does not signify end of object, because it's
+    // indented on the same level as rest of the block.
+
+    // E.g.:
+
+    // a =
+    // b : 1
+    // c : 2
+    // hello()
+
+    // Should yield: `a = {b: 1, c: 2}; hello();`
+    let stateBeforeNewline: ParserState | undefined
+    let hadComma = false
+    let hadNewline = false
+
     const ret = new nodes.ObjectLiteral()
     for (; ;) {
-      if (this.peekToken()?.type === '}') {
+      if (isBracketed && this.peekToken()?.type === '}') {
         // End of object.
         break
       }
       const id = this.parseIdentifier() ?? this.parseNumber() ?? this.parseStringLiteral()
       if (!id) {
-        throw new Error(`Expected identifier, number, or string literal after '{', got: '${this.peekToken()?.val}'`)
+        if (isBracketed) {
+          throw new Error(`Expected identifier, number, or string literal after '{', got: '${this.peekToken()?.val}'`)
+        } else {
+          break
+        }
+      }
+      if (this.peekToken()?.type !== ':') {
+        if (isBracketed || !hadNewline) {
+          throw new Error(`Expected ':' after identifier in object body,  got '${this.peekToken()?.val}`)
+        } else {
+          if (!stateBeforeNewline) { throw new Error("BUG: stateBeforeNewline is undefined here") }
+          this.state = stateBeforeNewline
+          break
+        }
       }
       const colon = this.takeToken()
-      if (colon.type !== ':') {
-        throw new Error(`Expected ':' after identifier,  got '${colon.val}`)
-      }
+
       let exprOpts: ParseExpressionState | undefined = undefined
       if (this.peekNewline()) {
         const exprIndent = this.moveToNextLine()
@@ -477,7 +524,7 @@ export class Parser {
         }
         exprOpts = { exprIndent }
       } else {
-        exprOpts = { exprIndent : lastIndent }
+        exprOpts = { exprIndent: lastIndent }
       }
       const value = this.parseExpression(exprOpts)
       if (!value) {
@@ -488,7 +535,10 @@ export class Parser {
         value: value,
       })
 
-      // Consume optional comma, checking for indentation rules.
+      // Consume optional comma, checking for indentation rules. Note that if
+      // we get comma here, we expect another key:value afterwards in the next
+      // line or so, not end of object.
+      hadComma = false
       if (this.peekTokenThroughNewlines()?.type === ',') {
         if (this.peekNewline()) {
           const commaIndent = this.moveToNextLine()
@@ -524,104 +574,63 @@ export class Parser {
         if (comma.type !== ',') {
           throw new Error(`BUG: Tried to consume ',', ended up with: ${comma.val} (${comma.type})`)
         }
+        hadComma = true
       }
 
+      hadNewline = false
       if (this.peekNewline()) {
-        const newIndent = this.moveToNextLine()
+        // Clone state for case that we are rewinding `moveToNextLine`. This
+        // can only happen in unbracketed object literals, where deindent means
+        // end of object.
+        if (!isBracketed) {
+          stateBeforeNewline = this.cloneState()
+        }
+
+        // Pass true to inBlock if we are in non-bracketed object literal - the
+        // way we parse it resembles a block, and we need to be able to detect
+        // that we are out of the object body. Otherwise it throws on
+        // de-indent.
+        const inBlock = !isBracketed
+        const newIndent = this.moveToNextLine(inBlock)
         if (this.peekToken()?.type === '}') {
           // End of object. We don't care about indentation of '}'.
           break
         }
 
         if (newIndent > lastIndent) {
-          throw new Error(`Unexpected indent. Key in an object body has to be indented at least to the level of previous object.`)
+          throw new Error(`Unexpected indent. Key in an object body has to be indented at least to the level of previous object. (in this case indent=${lastIndent}, got ${newIndent})`)
         }
         if (newIndent < minIndent) {
-          throw new Error('Missing indentation. Everything in object block has to be indented at least to that block.')
+          if (isBracketed) {
+            throw new Error('Missing indentation. Everything in object block has to be indented at least to that block.')
+          } else {
+            if (!stateBeforeNewline) { throw new Error("BUG: stateBeforeNewline is undefined here") }
+            this.state = stateBeforeNewline
+            break
+          }
+        }
+
+        if (!isBracketed && inlineObject && !hadComma) {
+          // Even if indent is fine, inlineObjects always need commas between
+          // object keys.
+          if (!stateBeforeNewline) { throw new Error("BUG: stateBeforeNewline is undefined here") }
+          this.state = stateBeforeNewline
+          break
         }
         lastIndent = newIndent
+
+        hadNewline = true
       }
     }
 
-    const closingBr = this.takeToken()
-    if (closingBr.type !== '}') {
-      throw new Error(`Expected '}' to close the object, got: '${closingBr.val}'`)
+    if (isBracketed) {
+      const closingBr = this.takeToken()
+      if (closingBr.type !== '}') {
+        throw new Error(`Expected '}' to close the object, got: '${closingBr.val}'`)
+      }
     }
 
     return ret
-  }
-
-  private parseObjectInline(opts?: ParseExpressionState): nodes.ObjectLiteral | undefined {
-    return undefined
-  }
-
-  private parseObjectLiteral(opts?: ParseExpressionState): nodes.ObjectLiteral | undefined {
-    let hadOpenBracket = false
-    let currentIndent = this.currentIndentLevel()
-
-    const maybeBrackets = this.parseObjectLiteralBrackets(opts)
-    if (maybeBrackets) {
-      return maybeBrackets
-    }
-
-    if (!opts?.exprIndent) {
-      // Inline object and not in bracket, has to be the special rule for
-      // one-liner objects.
-    }
-
-    let obj: nodes.ObjectLiteral | undefined = undefined
-    for (; ;) {
-      const id = this.parseIdentifier() ?? this.parseStringLiteral() ?? this.parseNumber()
-      if (!id) {
-        if (hadOpenBracket) {
-          throw new Error(`Expected string literal, number literal, or identifier in object, found: ${this.peekToken()?.val}`)
-        } else {
-          break
-        }
-      }
-
-      const state = this.cloneState()
-      const colon = this.takeToken()
-      if (colon.type !== ':') {
-        if (hadOpenBracket || obj) {
-          throw new Error(`Expected ':', got ${colon.val}`)
-        } else {
-          this.state = state
-          break
-        }
-      }
-
-      const expr = this.parseExpression()
-      if (!expr) {
-        throw new Error("Expected expression after ':'")
-      }
-
-      if (!obj) {
-        // First key-value pair, create ObjectLiteral
-        obj = new nodes.ObjectLiteral()
-      }
-
-      obj.properties.push({ propertyId: id, value: expr })
-
-      let next = this.peekToken()
-      if (next?.type === 'NEWLINE') {
-        this.moveToNextLine()
-        next = this.peekToken()
-      }
-      if (!next) {
-        throw new Error('ran out of tokens in the middle of object literal')
-      }
-
-      if (next.type === "}") {
-        this.takeToken()
-        break
-      } else if (next.type === ',') {
-        this.takeToken()
-        continue
-      }
-    }
-
-    return obj
   }
 
   private parseFunctionParam(): nodes.FunctionParam | undefined {
@@ -793,12 +802,12 @@ export class Parser {
     // Primary expressions:
     const simple =
       this.parseFunction() ??
+      this.parseObjectLiteral(opts) ??
       this.parseFunctionCall() ??
       this.parseAssign() ??
       this.parseNumber() ??
       this.parseStringLiteral() ??
       this.parseIdentifier() ??
-      this.parseObjectLiteral(opts) ??
       this.parseBuiltinPrimary() ??
       this.parseThisAccess()
 

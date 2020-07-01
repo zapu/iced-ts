@@ -9,7 +9,7 @@ interface TestCase {
 }
 
 function runAll(tests: TestCase[]) {
-  let success = true
+  let failCount = 0
   for (const test of tests) {
     const inputCon = test.input.replace(/\n/g, '⏎')
     try {
@@ -29,10 +29,10 @@ function runAll(tests: TestCase[]) {
 
       if (test.error) {
         console.error(`[x] Failed for input: "${inputCon}": expected error, got '${commonEmit}'`)
-        success = false
+        failCount++
       } else if (test.expected !== commonEmit) {
         console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got '${commonEmit}'`)
-        success = false
+        failCount++
       } else {
         console.log(`[+] "${inputCon}" -> '${commonEmit}'`)
       }
@@ -43,11 +43,15 @@ function runAll(tests: TestCase[]) {
       } else {
         console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got exception: ${err.message}`)
         console.error(err)
-        success = false
+        failCount++
       }
     }
   }
-  return success
+  if (failCount > 0) {
+    console.error(`Total ${failCount} failing test(s).`)
+    return false
+  }
+  return true
 }
 
 const tests: TestCase[] = [
@@ -119,6 +123,9 @@ const tests: TestCase[] = [
   { input: '(foo)(a, b)', expected: '(foo)(a,b)' },
 
   { input: 'foo\n  20', error: true },
+  { input: '  foo\n    20', error: true },
+  { input: 'foo\n20', expected: 'foo;20' },
+  { input: '  foo\n  20', expected: 'foo;20' },
 
   // splats
   { input: 'foo arr...', expected: 'foo(arr...)' },
@@ -151,6 +158,8 @@ const tests: TestCase[] = [
   { input: 'a *= 2', expected: 'a *= 2' },
   { input: 'a ^= 2', expected: 'a ^= 2' },
   { input: 'a |= 2 | x', expected: 'a |= 2 | x' },
+
+  { input: `foo\n20: 2`, expected: 'foo;{20: 2}'},
 
   // Functions
   { input: 'foo = () ->', expected: 'foo = () -> {}' },

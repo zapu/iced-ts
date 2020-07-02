@@ -5,7 +5,7 @@ import * as util from 'util'
 interface TestCase {
   input: string
   expected?: string
-  error?: boolean
+  error?: boolean | RegExp
 }
 
 function runAll(tests: TestCase[]) {
@@ -39,7 +39,17 @@ function runAll(tests: TestCase[]) {
 
     } catch (err) {
       if (test.error) {
-        console.log(`[+] "${inputCon} -> error as expected: "${err?.message}"`)
+        let ok = true
+        const testError = test.error
+        if (util.types.isRegExp(testError) && !testError.test(err.message)) {
+          console.error(`[x] Failed for input: "${inputCon}": expected error to match ${testError} but got "${err.message}"`)
+          ok = false
+          success = false
+        }
+
+        if (ok) {
+          console.log(`[+] "${inputCon} -> error as expected: "${err?.message}"`)
+        }
       } else {
         console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got exception: ${err.message}`)
         console.error(err)
@@ -146,6 +156,7 @@ const tests: TestCase[] = [
   { input: 'foo bar baz 1', expected: 'foo(bar(baz(1)))' },
   { input: 'foo(1)(func 2)', expected: 'foo(1)(func(2))' },
   { input: 'foo(1)(func 2)(func 3, 4)', expected: 'foo(1)(func(2))(func(3,4))' },
+  { input: '2 * hello() IF 2', expected: '2 * hello()(IF(2))' }, // unlikely typo of `if` operator
 
   // Combined function calls and arithmetic
   { input: 'foo(2) + 3', expected: 'foo(2) + 3' },
@@ -160,6 +171,17 @@ const tests: TestCase[] = [
   { input: 'a |= 2 | x', expected: 'a |= 2 | x' },
 
   { input: `foo\n20: 2`, expected: 'foo;{20: 2}'},
+
+  // `if` / `unless` in a binary expression
+  { input: '2 * hello() if 2', expected: '2 * hello() if 2' },
+  { input: '2 * hello() unless 2', expected: '2 * hello() unless 2' },
+  { input: '2 * hello() if a unless b', expected: '2 * hello() if a unless b' },
+  // (Transforming the following to something emittable is outside of the scope
+  // of the parser. if/unless binary expressions will behave differently wheter
+  // they are alone as a statement or as an expression.)
+  { input: 'a = 2 unless b', expected: 'a = 2 unless b' },
+  // Seems a lot like first test case here but is totally different due to `then`.
+  { input: '2 * hello() if x then 3', expected: '2 * hello()(if (x) { 3 })' },
 
   // Functions
   { input: 'foo = () ->', expected: 'foo = () -> {}' },
@@ -463,6 +485,15 @@ foo
   { input: '@hello = 1', expected: 'this.hello = 1' },
   { input: '@hello()', expected: 'this.hello()' },
   { input: '@hello(+@bye)', expected: 'this.hello(+this.bye)' },
+
+  // If statements / expressions
+  { input: 'if x\n  hello()', expected: 'if (x) { hello() }' },
+  { input: 'unless x\n  hello()', expected: 'unless (x) { hello() }' },
+  { input: 'if x\n  hello()\n  what = "world"', expected: 'if (x) { hello();what = "world" }' },
+  { input: 'if x\n  hello()\n  what = "world"\nok()', expected: 'if (x) { hello();what = "world" };ok()' },
+
+  { input: 'if x\nhello()', error: /Empty block in an 'if'/ },
+  { input: 'unless x\nhello()', error: /Empty block in an 'unless'/ },
 ]
 
 if (runAll(tests)) {

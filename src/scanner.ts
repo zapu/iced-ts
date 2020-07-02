@@ -8,7 +8,8 @@ export type TokenType =
     'COMMENT' | 'NEWLINE' | 'WHITESPACE' |
     'IDENTIFIER' | 'NUMBER' | 'STRING' |
     'ASSIGN_OPERATOR' | 'OPERATOR' |
-    'FUNC' | 'CLASS' | 'RETURN' | 'IF' | 'UNLESS' |
+    'FUNC' | 'CLASS' | 'RETURN' |
+    'IF' | 'UNLESS' | 'THEN' |
     'BUILTIN_PRIMARY' |
     'UNARY' | 'UNARY_MATH' |
     ',' | ';' | ':' |
@@ -55,6 +56,7 @@ const commonTokens: { [str: string]: TokenType } = {
 
     'if': 'IF',
     'unless': 'UNLESS',
+    'then': 'THEN',
 
     '(': '(',
     ')': ')',

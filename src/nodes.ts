@@ -240,6 +240,32 @@ export abstract class Operation extends Expression {
 
 }
 
+export class IfExpression extends Expression {
+  operator: Token
+  condition: Expression
+  block: Block | Expression
+  else?: Block | Expression
+
+  constructor(operator: Token, condition: Expression, block: Expression) {
+    super()
+    this.operator = operator
+    this.condition = condition
+    this.block = block
+  }
+
+  emit(): string {
+    return ""
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    return `${this.operator.val} (${this.condition.debugEmitCommon()}) { ${this.block.debugEmitCommon()} }`
+  }
+}
+
 export class Assign extends Expression {
   target: Expression
   operator: Token

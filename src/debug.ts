@@ -3,11 +3,12 @@ import { Parser } from './parser'
 import * as util from 'util'
 
 async function main() {
-  let contents = `
-foo
-  hello : world
-  'hello': 50221
-`
+//   let contents = `
+// foo
+//   hello : world
+//   'hello': 50221
+// `
+  let contents = `2 * hello() if x`
 
   console.log('input:')
   console.log(contents.replace(/ /g, '·').replace(/\n/g, '⏎\n'))
@@ -26,11 +27,9 @@ foo
   console.log(util.inspect(nodes, false, null))
 
   console.log('common:', nodes?.debugEmitCommon())
-
   console.log('emit:')
   console.log(nodes?.emit())
 
-  console.log('common:', nodes?.debugEmitCommon())
   console.log('evalMath:', nodes?.debugEvalJS())
   console.log('eval:', eval(contents))
 }

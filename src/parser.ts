@@ -4,6 +4,19 @@ import { start } from 'repl'
 import { exception } from 'console'
 
 const operatorPriority: { [k: string]: number } = {
+  'if': 1,
+  'unless': 1,
+
+  'is': 10,
+  'isnt': 10,
+  '==': 10,
+  '!=': 10,
+  '>=': 10,
+  '<=': 10,
+  '>': 10,
+  '<': 10,
+
+  // TODO: Add priorities for stuff like `^` `|`
   '+': 50,
   '-': 50,
   '*': 100,
@@ -53,7 +66,12 @@ function isUnary(token: Token): boolean {
 }
 
 function isBinary(token: Token | undefined): boolean {
-  return !!token && token.type === 'OPERATOR' && ['+', '-', '*', '/', '|'].includes(token.val)
+  return !!token && (
+    token.type === 'OPERATOR' &&
+    ['+', '-', '*', '/', '|', '^',
+      'is', 'isnt', '==', '!=', '>=', '<=', '>', '<'].includes(token.val) ||
+    token.type === 'IF' ||
+    token.type === 'UNLESS')
 }
 
 export class Parser {
@@ -376,10 +394,10 @@ export class Parser {
       if (left instanceof nodes.BinaryExpression) {
         // TODO: Make sure all operator priorities are defined
         if (operatorPriority[opToken.val] === undefined) {
-          throw new Error(`undefined operator priority for '${opToken.val}`)
+          throw new Error(`undefined operator priority for '${opToken.val}'`)
         }
         if (operatorPriority[left.operator.val] === undefined) {
-          throw new Error(`undefined operator priority for '${left.operator.val}`)
+          throw new Error(`undefined operator priority for '${left.operator.val}'`)
         }
         if (operatorPriority[opToken.val] > operatorPriority[left.operator.val]) {
           left.right = new nodes.BinaryExpression(left.right, opToken, right)
@@ -389,6 +407,38 @@ export class Parser {
       left = new nodes.BinaryExpression(left, opToken, right)
     }
     return left
+  }
+
+  private parseIfExpression(): nodes.IfExpression | undefined {
+    if (!['IF', 'UNLESS'].includes(this.peekToken()?.type ?? '')) {
+      return undefined
+    }
+    const state = this.cloneState()
+    const operator = this.takeToken()
+    const condition = this.parseExpression()
+    if (!condition) {
+      throw new Error(`Expected an expression after ${operator.val}`)
+    }
+    if (this.peekToken()?.type === 'THEN') {
+      const then = this.takeToken()
+      if (this.peekNewline()) {
+        throw new Error(`Unexpected newline after '${then.val}'`)
+      }
+    } else if (!this.peekNewline()) {
+      if (this.state.inFCallImplicitArgs) {
+        this.state = state
+        return undefined
+      }
+      throw new Error(`Unexpected after condition in if statement: ${this.peekToken()?.val}`)
+    }
+    let block = this.parseBlock()
+    if (!block) {
+      throw new Error(`Expected a block`)
+    }
+    if (block.expressions.length === 0) {
+      throw new Error(`Empty block in an '${operator.val}'`)
+    }
+    return new nodes.IfExpression(operator, condition, block)
   }
 
   private parseAssign(): nodes.Assign | undefined {
@@ -804,6 +854,7 @@ export class Parser {
       this.parseFunction() ??
       this.parseObjectLiteral(opts) ??
       this.parseFunctionCall() ??
+      this.parseIfExpression() ??
       this.parseAssign() ??
       this.parseNumber() ??
       this.parseStringLiteral() ??
@@ -1010,6 +1061,7 @@ export class Parser {
         // TODO: Ideally we would try to resume parsing here to try to tell
         // user what happened. E.g. maybe there's a letfover expression here
         // somehow.
+        console.log('leftovers:', token, this.tokens.slice(this.state.pos))
         throw new Error('found leftover tokens')
       }
     }

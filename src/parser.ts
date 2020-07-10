@@ -66,10 +66,11 @@ function isUnary(token: Token): boolean {
 }
 
 function isBinary(token: Token | undefined): boolean {
-  return !!token && (
+  return !!token && ((
     token.type === 'OPERATOR' &&
     ['+', '-', '*', '/', '|', '^',
-      'is', 'isnt', '==', '!=', '>=', '<=', '>', '<'].includes(token.val) ||
+      'is', 'isnt', '==', '!=',
+      '>=', '<=', '>', '<'].includes(token.val)) ||
     token.type === 'IF' ||
     token.type === 'UNLESS')
 }

@@ -44,7 +44,6 @@ function runAll(tests: TestCase[]) {
         if (util.types.isRegExp(testError) && !testError.test(err.message)) {
           console.error(`[x] Failed for input: "${inputCon}": expected error to match ${testError} but got "${err.message}"`)
           ok = false
-          success = false
         }
 
         if (ok) {
@@ -491,6 +490,12 @@ foo
   { input: 'unless x\n  hello()', expected: 'unless (x) { hello() }' },
   { input: 'if x\n  hello()\n  what = "world"', expected: 'if (x) { hello();what = "world" }' },
   { input: 'if x\n  hello()\n  what = "world"\nok()', expected: 'if (x) { hello();what = "world" };ok()' },
+
+  { input: 'if x then hello()', expected: 'if (x) { hello() }' },
+  { input: 'unless x then hello()', expected: 'unless (x) { hello() }' },
+
+  { input: 'if x then', error: /Empty block in an 'if'/ },
+  { input: 'if x then\n', error: /Unexpected newline after 'then'/ },
 
   { input: 'if x\nhello()', error: /Empty block in an 'if'/ },
   { input: 'unless x\nhello()', error: /Empty block in an 'unless'/ },

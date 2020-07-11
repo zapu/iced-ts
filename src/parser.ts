@@ -410,18 +410,58 @@ export class Parser {
     return left
   }
 
+  private parseLoopExpression(): nodes.LoopExpression | undefined {
+    if (this.peekToken()?.type !== 'LOOP') {
+      return undefined
+    }
+    const operator = this.takeToken()
+    const block = this.parseBlock()
+    if (!block) {
+      throw new Error(`Expected a block in a '${operator.val} expression`)
+    }
+    if (block.expressions.length === 0) {
+      throw new Error(`Empty block in a '${operator.val}' expression`)
+    }
+    return new nodes.LoopExpression(operator, undefined /* condition */, block)
+  }
+
+  private parseUntilExpression(): nodes.LoopExpression | undefined {
+    if (this.peekToken()?.type !== 'UNTIL') {
+      return undefined
+    }
+    const operator = this.takeToken()
+    const condition = this.parseExpression()
+    if (!condition) {
+      throw new Error(`Expected an expression after '${operator.val}'`)
+    }
+    if (this.peekToken()?.type === 'THEN') {
+      const then = this.takeToken()
+      if (this.peekNewline()) {
+        throw new Error(`Unexpected newline after '${then.val}'`)
+      }
+    }
+    const block = this.parseBlock()
+    if (!block) {
+      throw new Error(`Expected a block in a '${operator.val} expression`)
+    }
+    if (block.expressions.length === 0) {
+      throw new Error(`Empty block in a '${operator.val}' expression`)
+    }
+    return new nodes.LoopExpression(operator, condition, block)
+  }
+
   private parseForExpression(): nodes.ForExpression | undefined {
-    if(!['FOR', 'UNTIL', 'LOOP'].includes(this.peekToken()?.type ?? '')) {
+    if (this.peekToken()?.type !== 'FOR') {
       return undefined
     }
     const state = this.cloneState()
     const operator = this.takeToken()
     let condition = undefined
-    if(operator.type === 'LOOP') {
+    if (operator.type === 'LOOP') {
 
     } else {
       condition = this.parseExpression()
-      if(!condition) {
+      if (!condition) {
         throw new Error(`Expected an expression after '${operator.val}'`)
       }
       if (this.peekToken()?.type === 'THEN') {
@@ -432,13 +472,19 @@ export class Parser {
       }
     }
     const block = this.parseBlock()
-    if(!block) {
+    if (!block) {
       throw new Error(`Expected a block in a '${operator.val} expression`)
     }
     if (block.expressions.length === 0) {
       throw new Error(`Empty block in a '${operator.val}' expression`)
     }
     return new nodes.ForExpression(operator, condition, block)
+  }
+
+  private parseAnyLoopExpression() {
+    return this.parseLoopExpression() ??
+      this.parseUntilExpression() ??
+      this.parseForExpression()
   }
 
   private parseIfExpression(): nodes.IfExpression | undefined {
@@ -904,7 +950,7 @@ export class Parser {
       this.parseObjectLiteral(opts) ??
       this.parseFunctionCall() ??
       this.parseIfExpression() ??
-      this.parseForExpression() ??
+      this.parseAnyLoopExpression() ??
       this.parseAssign() ??
       this.parseNumber() ??
       this.parseStringLiteral() ??
@@ -1077,7 +1123,8 @@ export class Parser {
         }
 
         block.expressions.push(expr)
-        switch (this.peekToken()?.type) {
+        const peekedTok = this.peekToken()
+        switch (peekedTok?.type) {
           case 'NEWLINE': // end of line
           case undefined: // end of file
             break loop
@@ -1088,16 +1135,16 @@ export class Parser {
             if (this.state.inParens) {
               break loop
             } else {
-              throw new Error(`Unexpected ${this.peekToken()?.val}`)
+              throw new Error(`Unexpected ${peekedTok?.val}`)
             }
           case 'ELSE':
             if (inIfExpr) {
               break loop
             } else {
-              throw new Error(`Unexpected ${this.peekToken()?.val}`)
+              throw new Error(`Unexpected '${peekedTok?.val}'`)
             }
           default:
-            throw new Error(`Unexpected ${this.peekToken()?.val}`)
+            throw new Error(`Unexpected ${peekedTok?.val}`)
         }
       }
     }

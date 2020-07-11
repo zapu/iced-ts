@@ -495,6 +495,7 @@ foo
   { input: 'unless x then hello()', expected: 'unless (x) { hello() }' },
   { input: 'if friday then jack else jill', expected: 'if (friday) { jack } else { jill }' },
   { input: 'data = if friday then jack else jill', expected: 'data = if (friday) { jack } else { jill }' },
+  { input: 'if friday then sue else joy else huh', error: /Unexpected 'else'/ },
 
   { input: 'if x then', error: /Empty block in an 'if'/ },
   { input: 'if x then\n', error: /Unexpected newline after 'then'/ },

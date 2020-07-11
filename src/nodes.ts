@@ -240,10 +240,40 @@ export abstract class Operation extends Expression {
 
 }
 
+export class LoopExpression extends Expression {
+  // Covers `loop` and `until (cond)` expressions
+  operator: Token
+  condition?: Expression
+  block: Block
+
+  constructor(operator: Token, condition: Expression | undefined, block: Block) {
+    super()
+    this.operator = operator
+    this.condition = condition
+    this.block = block
+  }
+
+  emit(): string {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    if(this.condition) {
+      return `${this.operator.val} (${this.condition.debugEmitCommon()}) { ${this.block.debugEmitCommon()} }`
+    } else {
+      return `${this.operator.val} { ${this.block.debugEmitCommon()} }`
+    }
+  }
+}
+
 export class ForExpression extends Expression {
   operator: Token // 'FOR', 'UNTIL', or 'LOOP'
   condition?: Expression
-  block: Block | Expression
+  block: Block
 
   constructor(operator: Token, condition: Expression | undefined, block: Block) {
     super()

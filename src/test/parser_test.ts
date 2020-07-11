@@ -493,6 +493,8 @@ foo
 
   { input: 'if x then hello()', expected: 'if (x) { hello() }' },
   { input: 'unless x then hello()', expected: 'unless (x) { hello() }' },
+  { input: 'if friday then jack else jill', expected: 'if (friday) { jack } else { jill }' },
+  { input: 'data = if friday then jack else jill', expected: 'data = if (friday) { jack } else { jill }' },
 
   { input: 'if x then', error: /Empty block in an 'if'/ },
   { input: 'if x then\n', error: /Unexpected newline after 'then'/ },
@@ -504,6 +506,8 @@ foo
   { input: 'loop\n  x()', expected: 'loop { x() }' },
   { input: 'loop\n  x()\n  y()', expected: 'loop { x();y() }' },
   { input: 'loop\nx()', error: /Empty block in a 'loop' expression/ },
+
+  { input: 'until x > 2 then x = y()', expected: 'until (x > 2) { x = y() }'},
 ]
 
 if (runAll(tests)) {

@@ -95,7 +95,7 @@ export class BuiltinPrimaryExpression extends Expression {
   }
 
   debugEvalJS() {
-    switch(this.token.val) {
+    switch (this.token.val) {
       case 'true':
         return true
       case 'false':
@@ -242,7 +242,7 @@ export abstract class Operation extends Expression {
 
 export class ForExpression extends Expression {
   operator: Token // 'FOR', 'UNTIL', or 'LOOP'
-  condition: Expression | undefined
+  condition?: Expression
   block: Block | Expression
 
   constructor(operator: Token, condition: Expression | undefined, block: Block) {
@@ -274,17 +274,18 @@ export class IfExpression extends Expression {
   operator: Token // 'IF' or 'UNLESS'
   condition: Expression
   block: Block | Expression
-  else?: Block | Expression
+  elsePart?: Block | IfExpression
 
-  constructor(operator: Token, condition: Expression, block: Expression) {
+  constructor(operator: Token, condition: Expression, block: Expression, elsePart?: Block | IfExpression) {
     super()
     this.operator = operator
     this.condition = condition
     this.block = block
+    this.elsePart = elsePart
   }
 
   emit(): string {
-    return ""
+    throw new Error("Method not implemented.")
   }
 
   debugEvalJS() {
@@ -292,7 +293,15 @@ export class IfExpression extends Expression {
   }
 
   debugEmitCommon(): string {
-    return `${this.operator.val} (${this.condition.debugEmitCommon()}) { ${this.block.debugEmitCommon()} }`
+    let ret = `${this.operator.val} (${this.condition.debugEmitCommon()}) { ${this.block.debugEmitCommon()} }`
+    if (this.elsePart) {
+      if (this.elsePart instanceof Block) {
+        ret += ' else { ' + this.elsePart.debugEmitCommon() + ' }'
+      } else {
+        ret += ' ' + this.elsePart.debugEmitCommon()
+      }
+    }
+    return ret
   }
 }
 
@@ -473,7 +482,7 @@ export abstract class UnaryExpression extends Expression {
   }
 }
 
-export class PrefixUnaryExpression extends UnaryExpression {}
+export class PrefixUnaryExpression extends UnaryExpression { }
 
 export class PostfixUnaryExpression extends UnaryExpression {
   emit(): string {

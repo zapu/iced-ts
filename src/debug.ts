@@ -8,7 +8,7 @@ async function main() {
 //   hello : world
 //   'hello': 50221
 // `
-  let contents = `2 * hello() if x`
+  let contents = `if friday then sue else jill`
 
   console.log('input:')
   console.log(contents.replace(/ /g, '·').replace(/\n/g, '⏎\n'))

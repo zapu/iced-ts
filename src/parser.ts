@@ -463,14 +463,31 @@ export class Parser {
       }
       throw new Error(`Unexpected after condition in if statement: ${this.peekToken()?.val}`)
     }
-    const block = this.parseBlock()
+    const block = this.parseBlock(false /* rootBlock */, true /* inIfExpr */)
     if (!block) {
       throw new Error(`Expected a block`)
     }
     if (block.expressions.length === 0) {
       throw new Error(`Empty block in an '${operator.val}'`)
     }
-    return new nodes.IfExpression(operator, condition, block)
+
+    let elsePart = undefined
+    if (this.peekToken()?.type === 'ELSE') {
+      const elseTok = this.takeToken()
+      if (['IF', 'UNLESS'].includes(this.peekToken()?.type ?? '')) {
+        elsePart = this.parseIfExpression()
+      } else {
+        // inIfExpr = false so we throw if we see another 'ELSE'.
+        elsePart = this.parseBlock(false /* rootBlock */, false /* inIfExpr */)
+        if (!elsePart) {
+          throw new Error(`Expected a block after '${elseTok.val}'`)
+        } else if (elsePart.expressions.length === 0) {
+          throw new Error(`Empty block after '${elseTok.val}'`)
+        }
+      }
+    }
+
+    return new nodes.IfExpression(operator, condition, block, elsePart)
   }
 
   private parseAssign(): nodes.Assign | undefined {
@@ -966,7 +983,7 @@ export class Parser {
       this.parseExpression()
   }
 
-  private parseBlock(rootBlock?: boolean) {
+  private parseBlock(rootBlock?: boolean, inIfExpr?: boolean) {
     const state = this.cloneState()
     const block = new nodes.Block()
 
@@ -1073,7 +1090,12 @@ export class Parser {
             } else {
               throw new Error(`Unexpected ${this.peekToken()?.val}`)
             }
-            break
+          case 'ELSE':
+            if (inIfExpr) {
+              break loop
+            } else {
+              throw new Error(`Unexpected ${this.peekToken()?.val}`)
+            }
           default:
             throw new Error(`Unexpected ${this.peekToken()?.val}`)
         }

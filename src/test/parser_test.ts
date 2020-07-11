@@ -499,6 +499,11 @@ foo
 
   { input: 'if x\nhello()', error: /Empty block in an 'if'/ },
   { input: 'unless x\nhello()', error: /Empty block in an 'unless'/ },
+
+  { input: 'loop x()', expected: 'loop { x() }' },
+  { input: 'loop\n  x()', expected: 'loop { x() }' },
+  { input: 'loop\n  x()\n  y()', expected: 'loop { x();y() }' },
+  { input: 'loop\nx()', error: /Empty block in a 'loop' expression/ },
 ]
 
 if (runAll(tests)) {

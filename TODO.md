@@ -7,6 +7,7 @@ Parsing:
 - [x] "post" `if` (`foo() if condition`, `return if condition` etc.)
 - [ ] for loops including the weird ones like
     `x for x in xs for xs in list`
+- [ ] `else` block
 
 - [ ] in, of, instanceof and: !in, !of, !instanceof
 

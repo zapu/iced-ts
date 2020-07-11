@@ -240,8 +240,38 @@ export abstract class Operation extends Expression {
 
 }
 
+export class ForExpression extends Expression {
+  operator: Token // 'FOR', 'UNTIL', or 'LOOP'
+  condition: Expression | undefined
+  block: Block | Expression
+
+  constructor(operator: Token, condition: Expression | undefined, block: Block) {
+    super()
+    this.operator = operator
+    this.condition = condition
+    this.block = block
+  }
+
+  emit(): string {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    let ret = this.operator.val
+    if (this.condition) {
+      ret += ` (${this.condition.debugEmitCommon()})`
+    }
+    ret += ` { ${this.block.debugEmitCommon()} }`
+    return ret
+  }
+}
+
 export class IfExpression extends Expression {
-  operator: Token
+  operator: Token // 'IF' or 'UNLESS'
   condition: Expression
   block: Block | Expression
   else?: Block | Expression

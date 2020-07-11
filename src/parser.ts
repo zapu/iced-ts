@@ -410,6 +410,37 @@ export class Parser {
     return left
   }
 
+  private parseForExpression(): nodes.ForExpression | undefined {
+    if(!['FOR', 'UNTIL', 'LOOP'].includes(this.peekToken()?.type ?? '')) {
+      return undefined
+    }
+    const state = this.cloneState()
+    const operator = this.takeToken()
+    let condition = undefined
+    if(operator.type === 'LOOP') {
+
+    } else {
+      condition = this.parseExpression()
+      if(!condition) {
+        throw new Error(`Expected an expression after '${operator.val}'`)
+      }
+      if (this.peekToken()?.type === 'THEN') {
+        const then = this.takeToken()
+        if (this.peekNewline()) {
+          throw new Error(`Unexpected newline after '${then.val}'`)
+        }
+      }
+    }
+    const block = this.parseBlock()
+    if(!block) {
+      throw new Error(`Expected a block in a '${operator.val} expression`)
+    }
+    if (block.expressions.length === 0) {
+      throw new Error(`Empty block in a '${operator.val}' expression`)
+    }
+    return new nodes.ForExpression(operator, condition, block)
+  }
+
   private parseIfExpression(): nodes.IfExpression | undefined {
     if (!['IF', 'UNLESS'].includes(this.peekToken()?.type ?? '')) {
       return undefined
@@ -432,7 +463,7 @@ export class Parser {
       }
       throw new Error(`Unexpected after condition in if statement: ${this.peekToken()?.val}`)
     }
-    let block = this.parseBlock()
+    const block = this.parseBlock()
     if (!block) {
       throw new Error(`Expected a block`)
     }
@@ -856,6 +887,7 @@ export class Parser {
       this.parseObjectLiteral(opts) ??
       this.parseFunctionCall() ??
       this.parseIfExpression() ??
+      this.parseForExpression() ??
       this.parseAssign() ??
       this.parseNumber() ??
       this.parseStringLiteral() ??

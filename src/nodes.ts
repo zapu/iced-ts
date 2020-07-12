@@ -262,7 +262,7 @@ export class LoopExpression extends Expression {
   }
 
   debugEmitCommon(): string {
-    if(this.condition) {
+    if (this.condition) {
       return `${this.operator.val} (${this.condition.debugEmitCommon()}) { ${this.block.debugEmitCommon()} }`
     } else {
       return `${this.operator.val} { ${this.block.debugEmitCommon()} }`
@@ -273,13 +273,17 @@ export class LoopExpression extends Expression {
 export class ForExpression extends Expression {
   operator: Token // 'FOR', 'UNTIL', or 'LOOP'
   iterType: Token // 'IN' or 'OF'
+  iter: Expression
+  iter2?: Expression
   target: Expression
   block: Block
 
-  constructor(operator: Token, iterType: Token, target: Expression, block: Block) {
+  constructor(operator: Token, iter: Expression, iter2: Expression | undefined, iterType: Token, target: Expression, block: Block) {
     super()
     this.operator = operator
     this.iterType = iterType
+    this.iter = iter
+    this.iter2 = iter2
     this.target = target
     this.block = block
   }

@@ -460,8 +460,17 @@ export class Parser {
     if (!iter1) {
       throw new Error(`Expected iterator after '${operator.val}'`)
     }
+    let iter2 = undefined
+    if (this.peekToken()?.type === ',') {
+      const comma = this.takeToken()
+      // Second component of target.
+      iter2 = this.parseExpression()
+      if (!iter2) {
+        throw new Error(`Expected an expression after '${comma.val}' in '${operator.val}' expression`)
+      }
+    }
     const iterType = this.takeToken()
-    if(!['IN', 'OF'].includes(iterType.type)) {
+    if (!['IN', 'OF'].includes(iterType.type)) {
       throw new Error(`Expected 'in' or 'of' after iterator, got '${iterType.val}`)
     }
     const target = this.parseExpression()
@@ -481,7 +490,7 @@ export class Parser {
     if (block.expressions.length === 0) {
       throw new Error(`Empty block in a '${operator.val}' expression`)
     }
-    return new nodes.ForExpression(operator, iterType, target, block)
+    return new nodes.ForExpression(operator, iter1, iter2, iterType, target, block)
   }
 
   private parseAnyLoopExpression() {

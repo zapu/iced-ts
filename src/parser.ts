@@ -456,19 +456,22 @@ export class Parser {
     }
     const state = this.cloneState()
     const operator = this.takeToken()
-    let condition = undefined
-    if (operator.type === 'LOOP') {
-
-    } else {
-      condition = this.parseExpression()
-      if (!condition) {
-        throw new Error(`Expected an expression after '${operator.val}'`)
-      }
-      if (this.peekToken()?.type === 'THEN') {
-        const then = this.takeToken()
-        if (this.peekNewline()) {
-          throw new Error(`Unexpected newline after '${then.val}'`)
-        }
+    const iter1 = this.parseExpression()
+    if (!iter1) {
+      throw new Error(`Expected iterator after '${operator.val}'`)
+    }
+    const iterType = this.takeToken()
+    if(!['IN', 'OF'].includes(iterType.type)) {
+      throw new Error(`Expected 'in' or 'of' after iterator, got '${iterType.val}`)
+    }
+    const target = this.parseExpression()
+    if (!target) {
+      throw new Error(`Expected an expression after '${operator.val}'`)
+    }
+    if (this.peekToken()?.type === 'THEN') {
+      const then = this.takeToken()
+      if (this.peekNewline()) {
+        throw new Error(`Unexpected newline after '${then.val}'`)
       }
     }
     const block = this.parseBlock()
@@ -478,7 +481,7 @@ export class Parser {
     if (block.expressions.length === 0) {
       throw new Error(`Empty block in a '${operator.val}' expression`)
     }
-    return new nodes.ForExpression(operator, condition, block)
+    return new nodes.ForExpression(operator, iterType, target, block)
   }
 
   private parseAnyLoopExpression() {

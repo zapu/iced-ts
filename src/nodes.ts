@@ -272,13 +272,15 @@ export class LoopExpression extends Expression {
 
 export class ForExpression extends Expression {
   operator: Token // 'FOR', 'UNTIL', or 'LOOP'
-  condition?: Expression
+  iterType: Token // 'IN' or 'OF'
+  target: Expression
   block: Block
 
-  constructor(operator: Token, condition: Expression | undefined, block: Block) {
+  constructor(operator: Token, iterType: Token, target: Expression, block: Block) {
     super()
     this.operator = operator
-    this.condition = condition
+    this.iterType = iterType
+    this.target = target
     this.block = block
   }
 
@@ -291,12 +293,7 @@ export class ForExpression extends Expression {
   }
 
   debugEmitCommon(): string {
-    let ret = this.operator.val
-    if (this.condition) {
-      ret += ` (${this.condition.debugEmitCommon()})`
-    }
-    ret += ` { ${this.block.debugEmitCommon()} }`
-    return ret
+    throw new Error("Method not implemented.")
   }
 }
 

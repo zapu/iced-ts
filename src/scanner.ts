@@ -10,7 +10,7 @@ export type TokenType =
     'ASSIGN_OPERATOR' | 'OPERATOR' |
     'FUNC' | 'CLASS' | 'RETURN' |
     'IF' | 'UNLESS' | 'THEN' | 'ELSE' |
-    'FOR' | 'UNTIL' | 'LOOP' |
+    'FOR' | 'UNTIL' | 'LOOP' | 'IN' | 'OF' |
     'BUILTIN_PRIMARY' |
     'UNARY' | 'UNARY_MATH' |
     ',' | ';' | ':' |
@@ -63,6 +63,9 @@ const commonTokens: { [str: string]: TokenType } = {
     'for': 'FOR',
     'until': 'UNTIL',
     'loop': 'LOOP',
+
+    'in': 'IN',
+    'of': 'OF',
 
     '(': '(',
     ')': ')',

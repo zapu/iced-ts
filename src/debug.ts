@@ -8,7 +8,7 @@ async function main() {
 //   hello : world
 //   'hello': 50221
 // `
-  let contents = `if friday then sue else jill`
+  let contents = `for x in arr then x()`
 
   console.log('input:')
   console.log(contents.replace(/ /g, '·').replace(/\n/g, '⏎\n'))

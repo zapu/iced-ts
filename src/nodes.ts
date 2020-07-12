@@ -297,7 +297,13 @@ export class ForExpression extends Expression {
   }
 
   debugEmitCommon(): string {
-    throw new Error("Method not implemented.")
+    let ret = `for ${this.iter.debugEmitCommon()}`
+    if(this.iter2) {
+      ret += `, ${this.iter2.debugEmitCommon()}`
+    }
+    ret += ` ${this.iterType.val} ${this.target.debugEmitCommon()}`
+    ret += ` { ${this.block.debugEmitCommon()} }`
+    return ret
   }
 }
 

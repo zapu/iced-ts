@@ -172,6 +172,9 @@ const tests: TestCase[] = [
   { input: `foo\n20: 2`, expected: 'foo;{20: 2}'},
 
   // `if` / `unless` in a binary expression
+  { input: 'v if v', expected: 'v if v' },
+  { input: 'v() if v', expected: 'v() if v' },
+  { input: 'v() if v else null', error: /Unexpected after expression: else/ },
   { input: '2 * hello() if 2', expected: '2 * hello() if 2' },
   { input: '2 * hello() unless 2', expected: '2 * hello() unless 2' },
   { input: '2 * hello() if a unless b', expected: '2 * hello() if a unless b' },
@@ -509,6 +512,16 @@ foo
   { input: 'loop\nx()', error: /Empty block in a 'loop' expression/ },
 
   { input: 'until x > 2 then x = y()', expected: 'until (x > 2) { x = y() }'},
+
+  { input: `for x in arr then x()`, expected: 'for x in arr { x() }' },
+  { input: `for x in arr\n  x()`, expected: 'for x in arr { x() }' },
+  { input: `for x in arr\nx()`, error: /Empty block in a 'for' expression/ },
+
+  { input: `for elem, i in arr\n  elem(i)`, expected: 'for elem, i in arr { elem(i) }' },
+  { input: `for key, val of obj\n  val(key)`, expected: 'for key, val of obj { val(key) }' },
+
+  { input: 'for _, v of obj then v() if v', expected: 'for _, v of obj { v() if v }' },
+  { input: 'for _, v of obj\n if v\n  v()', expected: 'for _, v of obj { if (v) { v() } }' },
 ]
 
 if (runAll(tests)) {

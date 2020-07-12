@@ -526,6 +526,13 @@ export class Parser {
       throw new Error(`Expected a block`)
     }
     if (block.expressions.length === 0) {
+      if (this.state.inFCallImplicitArgs) {
+        // TODO: Exiting cleanly here is needed, otherwise `v() if v` does not
+        // parse correctly. Make sure that's ok. I think `inFCallImplicitArgs`
+        // should not be in `this.state`, but in ParseExpressionState instead.
+        this.state = state
+        return undefined
+      }
       throw new Error(`Empty block in an '${operator.val}'`)
     }
 

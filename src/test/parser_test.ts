@@ -522,6 +522,11 @@ foo
 
   { input: 'for _, v of obj then v() if v', expected: 'for _, v of obj { v() if v }' },
   { input: 'for _, v of obj\n if v\n  v()', expected: 'for _, v of obj { if (v) { v() } }' },
+
+  { input: 'numbers = loop x = z', expected: 'numbers = loop { x = z }' },
+  { input: 'numbers = loop\n  x = z', expected: 'numbers = loop { x = z }' },
+
+  { input: 'numbers = until z then x(z)', expected: 'numbers = until (z) { x(z) }' },
 ]
 
 if (runAll(tests)) {

@@ -67,6 +67,9 @@ const commonTokens: { [str: string]: TokenType } = {
     'in': 'IN',
     'of': 'OF',
 
+    'break': 'BREAK',
+    'continue': 'CONTINUE',
+
     '(': '(',
     ')': ')',
     ',': ',',

@@ -1138,7 +1138,7 @@ export class Parser {
           if (this.state.inParens) {
             return block
           }
-          throw new Error(`Expected an expression`)
+          throw new Error(`Expected an expression (at '${this.peekToken()?.val}')`)
         }
 
         block.expressions.push(expr)

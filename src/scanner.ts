@@ -11,6 +11,7 @@ export type TokenType =
     'FUNC' | 'CLASS' | 'RETURN' |
     'IF' | 'UNLESS' | 'THEN' | 'ELSE' |
     'FOR' | 'UNTIL' | 'LOOP' | 'IN' | 'OF' |
+    'BREAK' | 'CONTINUE' |
     'BUILTIN_PRIMARY' |
     'UNARY' | 'UNARY_MATH' |
     ',' | ';' | ':' |

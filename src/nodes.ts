@@ -276,9 +276,9 @@ export class ForExpression extends Expression {
   iter: Expression
   iter2?: Expression
   target: Expression
-  block: Block
+  block: Block | undefined
 
-  constructor(operator: Token, iter: Expression, iter2: Expression | undefined, iterType: Token, target: Expression, block: Block) {
+  constructor(operator: Token, iter: Expression, iter2: Expression | undefined, iterType: Token, target: Expression, block: Block | undefined) {
     super()
     this.operator = operator
     this.iterType = iterType
@@ -302,7 +302,7 @@ export class ForExpression extends Expression {
       ret += `, ${this.iter2.debugEmitCommon()}`
     }
     ret += ` ${this.iterType.val} ${this.target.debugEmitCommon()}`
-    ret += ` { ${this.block.debugEmitCommon()} }`
+    ret += ` { ${this.block?.debugEmitCommon() ?? ''} }`
     return ret
   }
 }

@@ -53,6 +53,9 @@ interface ParseExpressionState {
   // brackets, inline object literals have different parsing rules than object
   // literal starting on a new line, with optional indentation.
   exprIndent?: number
+
+  // Are we trying to parse implicit function call argument?
+  implicitFcallArg?: boolean
 }
 
 function isUnary(token: Token): boolean {
@@ -217,8 +220,9 @@ export class Parser {
     }
   }
 
-  private parseFunctionCallArgument(): nodes.Expression | nodes.SplatExpression | undefined {
-    const expr = this.parseExpression()
+  private parseFunctionCallArgument(implicitFcall?: boolean): nodes.Expression | nodes.SplatExpression | undefined {
+    const opts = implicitFcall ? { implicitFcallArg: true } : undefined
+    const expr = this.parseExpression(opts)
     if (!expr) {
       return undefined
     }
@@ -232,7 +236,7 @@ export class Parser {
   private parseImplicitFunctionCallArguments(): nodes.Expression[] | undefined {
     const state = this.cloneState()
     this.state.inFCallImplicitArgs++
-    const firstArg = this.parseFunctionCallArgument()
+    const firstArg = this.parseFunctionCallArgument(true /* implicitFcall */)
     if (!firstArg) {
       // Implicit function calls need at least one argument in the same line as
       // function call target
@@ -281,7 +285,7 @@ export class Parser {
         }
       }
 
-      const expr = this.parseFunctionCallArgument()
+      const expr = this.parseFunctionCallArgument(true /* implicitFcall */)
       if (!expr) {
         if (hadComma) {
           throw new Error('Expected another expression after comma')
@@ -384,11 +388,18 @@ export class Parser {
     if (!expr) {
       return undefined
     }
+    if (opts?.implicitFcallArg) {
+      // Do not parse ForExpression2 as implicit function call argument, make
+      // parsing less greedy in this case.
+      // This lets us parse stuff like `foo x for x in arr` as
+      // `foo(x) for x in arr` instead of `foo(x for x in arr)`.
+      return expr
+    }
     if (this.peekToken()?.type !== 'FOR') {
       return expr
     }
     // const state = this.cloneState()
-    const forExpr = this.parseForExpression(true /* binaryForExpr */)
+    const forExpr = this.parseForExpression(opts, true /* binaryForExpr */)
     if (!forExpr) {
       throw new Error(`We are in for expression but 'for' could not be parsed, at '${this.peekToken()?.val}'`)
     }
@@ -467,7 +478,13 @@ export class Parser {
     return new nodes.LoopExpression(operator, condition, block)
   }
 
-  private parseForExpression(binaryForExpr?: boolean): nodes.ForExpression | undefined {
+  private parseForExpression(opts?: ParseExpressionState, binaryForExpr?: boolean): nodes.ForExpression | undefined {
+    if (opts?.implicitFcallArg) {
+      // ForExpression will never occur in implicit function call
+      // because something like `foo for x in arr` will always be
+      // parsed as ForExpression2, never as `foo(for x in arr)`.
+      return undefined
+    }
     if (this.peekToken()?.type !== 'FOR') {
       return undefined
     }
@@ -521,10 +538,10 @@ export class Parser {
     return new nodes.ForExpression(operator, iter1, iter2, iterType, target, block)
   }
 
-  private parseAnyLoopExpression() {
+  private parseAnyLoopExpression(opts?: ParseExpressionState) {
     return this.parseLoopExpression() ??
       this.parseUntilExpression() ??
-      this.parseForExpression()
+      this.parseForExpression(opts)
   }
 
   private parseIfExpression(): nodes.IfExpression | undefined {
@@ -997,7 +1014,7 @@ export class Parser {
       this.parseObjectLiteral(opts) ??
       this.parseFunctionCall() ??
       this.parseIfExpression() ??
-      this.parseAnyLoopExpression() ??
+      this.parseAnyLoopExpression(opts) ??
       this.parseAssign() ??
       this.parseNumber() ??
       this.parseStringLiteral() ??
@@ -1057,6 +1074,12 @@ export class Parser {
   }
 
   private parseExpression(opts?: ParseExpressionState): nodes.Expression | undefined {
+    // Start with `ForExpression2` which is the `x for x in arr` syntax. We
+    // will try to parse a BinaryExpression and then look if it's followed by
+    // 'FOR' token. If it is, we are dealing with ForExpression2, if not, just
+    // return the binary expression.
+    //
+    // Not the cleanest solution but is probably the cheapest here.
     return this.parseForExpression2(opts)
   }
 

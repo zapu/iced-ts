@@ -527,6 +527,14 @@ foo
   { input: 'numbers = loop\n  x = z', expected: 'numbers = loop { x = z }' },
 
   { input: 'numbers = until z then x(z)', expected: 'numbers = until (z) { x(z) }' },
+
+  { input: 'x for x in arr', expected: 'x for x in arr' },
+  { input: 'numbers = (2*x for x in arr)', expected: 'numbers = (2 * x for x in arr)' },
+  { input: 'foo x for x in arr', expected: 'foo(x) for x in arr' },
+  { input: 'foo 2*x for x in arr', expected: 'foo(2 * x) for x in arr' },
+  { input: 'foo v for k,v of obj', expected: 'foo(v) for k, v of obj' },
+
+  { input: 'foo(x for x in arr)', expected: 'foo(x for x in arr)' },
 ]
 
 if (runAll(tests)) {

@@ -26,7 +26,6 @@ const operatorPriority: { [k: string]: number } = {
 interface ParserState {
   pos: number
   inFCall: number
-  inFCallImplicitArgs: number // trying to descend into function call without parentheses
 
   // Are we parsing a parenthesized expression right now? It changes some
   // behavior i.e. during block parsing - which can end with close-paren, like:
@@ -87,7 +86,6 @@ export class Parser {
     this.state = {
       pos: 0,
       inFCall: 0,
-      inFCallImplicitArgs: 0,
       inParens: 0,
 
       indentStack: [],
@@ -220,9 +218,8 @@ export class Parser {
     }
   }
 
-  private parseFunctionCallArgument(implicitFcall?: boolean): nodes.Expression | nodes.SplatExpression | undefined {
-    const opts = implicitFcall ? { implicitFcallArg: true } : undefined
-    const expr = this.parseExpression(opts)
+  private parseFunctionCallArgument(exprOpts?: ParseExpressionState): nodes.Expression | nodes.SplatExpression | undefined {
+    const expr = this.parseExpression(exprOpts)
     if (!expr) {
       return undefined
     }
@@ -235,8 +232,8 @@ export class Parser {
 
   private parseImplicitFunctionCallArguments(): nodes.Expression[] | undefined {
     const state = this.cloneState()
-    this.state.inFCallImplicitArgs++
-    const firstArg = this.parseFunctionCallArgument(true /* implicitFcall */)
+    const exprOpts = { implicitFcallArg: true }
+    const firstArg = this.parseFunctionCallArgument(exprOpts)
     if (!firstArg) {
       // Implicit function calls need at least one argument in the same line as
       // function call target
@@ -246,7 +243,6 @@ export class Parser {
 
     const args = [firstArg]
     if (this.peekToken()?.type !== ',') {
-      this.state.inFCallImplicitArgs--
       return args
     }
     this.takeToken()
@@ -285,7 +281,7 @@ export class Parser {
         }
       }
 
-      const expr = this.parseFunctionCallArgument(true /* implicitFcall */)
+      const expr = this.parseFunctionCallArgument(exprOpts)
       if (!expr) {
         if (hadComma) {
           throw new Error('Expected another expression after comma')
@@ -301,7 +297,6 @@ export class Parser {
       }
     }
 
-    this.state.inFCallImplicitArgs--
     return args
   }
 
@@ -412,6 +407,16 @@ export class Parser {
       return undefined
     }
     while (isBinary(this.peekToken())) {
+      if (opts?.implicitFcallArg && ['IF', 'UNLESS'].includes(this.peekToken()?.type ?? '')) {
+        // `x if y` is not a valid expression as implicit function
+        // call argument, because we want to parse something like this:
+        // `foo x if y"
+        // as "foo(x) if y", and not "foo(x if y)".
+
+        // Breaking here when 'IF' / 'UNLESS' is encountered will make the
+        // parsing less greedy and hoist this construct higher.
+        break
+      }
       const opToken = this.takeToken()
       if (this.peekNewline()) {
         this.moveToNextLine()
@@ -488,7 +493,6 @@ export class Parser {
     if (this.peekToken()?.type !== 'FOR') {
       return undefined
     }
-    const state = this.cloneState()
     const operator = this.takeToken()
     const iter1 = this.parseExpression()
     if (!iter1) {
@@ -521,17 +525,9 @@ export class Parser {
     if (!binaryForExpr) {
       block = this.parseBlock()
       if (!block) {
-        if (this.state.inFCallImplicitArgs) {
-          this.state = state
-          return undefined
-        }
         throw new Error(`Expected a block in a '${operator.val} expression`)
       }
       if (block.expressions.length === 0) {
-        if (this.state.inFCallImplicitArgs) {
-          this.state = state
-          return undefined
-        }
         throw new Error(`Empty block in a '${operator.val}' expression`)
       }
     }
@@ -544,7 +540,7 @@ export class Parser {
       this.parseForExpression(opts)
   }
 
-  private parseIfExpression(): nodes.IfExpression | undefined {
+  private parseIfExpression(opts?: ParseExpressionState): nodes.IfExpression | undefined {
     if (!['IF', 'UNLESS'].includes(this.peekToken()?.type ?? '')) {
       return undefined
     }
@@ -560,7 +556,7 @@ export class Parser {
         throw new Error(`Unexpected newline after '${then.val}'`)
       }
     } else if (!this.peekNewline()) {
-      if (this.state.inFCallImplicitArgs) {
+      if (opts?.implicitFcallArg) {
         this.state = state
         return undefined
       }
@@ -571,10 +567,9 @@ export class Parser {
       throw new Error(`Expected a block`)
     }
     if (block.expressions.length === 0) {
-      if (this.state.inFCallImplicitArgs) {
+      if (opts?.implicitFcallArg) {
         // TODO: Exiting cleanly here is needed, otherwise `v() if v` does not
-        // parse correctly. Make sure that's ok. I think `inFCallImplicitArgs`
-        // should not be in `this.state`, but in ParseExpressionState instead.
+        // parse correctly. Make sure that's ok.
         this.state = state
         return undefined
       }
@@ -953,7 +948,7 @@ export class Parser {
     if (maybePrefix && isUnary(maybePrefix)) {
       const pos = this.state.pos
       const prefixOp = this.takeToken()
-      if (this.state.inFCallImplicitArgs > 0 && this.peekSpace()) {
+      if (opts?.implicitFcallArg && this.peekSpace()) {
         // In expression like 'a - b', do not consider '- b' to be an unary
         // expression, because then we would end up parsing it as 'a(-b)'.
         //
@@ -1013,7 +1008,7 @@ export class Parser {
       this.parseFunction() ??
       this.parseObjectLiteral(opts) ??
       this.parseFunctionCall() ??
-      this.parseIfExpression() ??
+      this.parseIfExpression(opts) ??
       this.parseAnyLoopExpression(opts) ??
       this.parseAssign() ??
       this.parseNumber() ??

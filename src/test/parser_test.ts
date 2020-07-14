@@ -184,6 +184,8 @@ const tests: TestCase[] = [
   { input: 'a = 2 unless b', expected: 'a = 2 unless b' },
   // Seems a lot like first test case here but is totally different due to `then`.
   { input: '2 * hello() if x then 3', expected: '2 * hello()(if (x) { 3 })' },
+  // `if cond` should apply to everything before, not just `z`.
+  { input: 'foo x, y, z if cond', expected: 'foo(x,y,z) if cond' },
 
   // Functions
   { input: 'foo = () ->', expected: 'foo = () -> {}' },

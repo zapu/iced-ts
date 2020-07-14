@@ -186,6 +186,8 @@ const tests: TestCase[] = [
   { input: '2 * hello() if x then 3', expected: '2 * hello()(if (x) { 3 })' },
   // `if cond` should apply to everything before, not just `z`.
   { input: 'foo x, y, z if cond', expected: 'foo(x,y,z) if cond' },
+  // `z if cond` can be parentesized, though.
+  { input: 'foo x, y, (z if cond)', expected: 'foo(x,y,(z if cond))' },
 
   // Functions
   { input: 'foo = () ->', expected: 'foo = () -> {}' },

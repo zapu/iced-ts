@@ -378,6 +378,23 @@ export class Parser {
     return ret
   }
 
+  // Parse `x for x in arr`, so an expression followed by a forExpression.
+  private parseForExpression2(opts?: ParseExpressionState): nodes.Expression | undefined {
+    const expr = this.parseBinaryExpr(opts)
+    if (!expr) {
+      return undefined
+    }
+    if (this.peekToken()?.type !== 'FOR') {
+      return expr
+    }
+    // const state = this.cloneState()
+    const forExpr = this.parseForExpression(true /* binaryForExpr */)
+    if (!forExpr) {
+      throw new Error(`We are in for expression but 'for' could not be parsed, at '${this.peekToken()?.val}'`)
+    }
+    return new nodes.ForExpression2(expr, forExpr)
+  }
+
   private parseBinaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
     let left = this.parseUnaryExpr(opts)
     if (!left) {
@@ -450,7 +467,7 @@ export class Parser {
     return new nodes.LoopExpression(operator, condition, block)
   }
 
-  private parseForExpression(): nodes.ForExpression | undefined {
+  private parseForExpression(binaryForExpr?: boolean): nodes.ForExpression | undefined {
     if (this.peekToken()?.type !== 'FOR') {
       return undefined
     }
@@ -483,12 +500,23 @@ export class Parser {
         throw new Error(`Unexpected newline after '${then.val}'`)
       }
     }
-    const block = this.parseBlock()
-    if (!block) {
-      throw new Error(`Expected a block in a '${operator.val} expression`)
-    }
-    if (block.expressions.length === 0) {
-      throw new Error(`Empty block in a '${operator.val}' expression`)
+    let block = undefined
+    if (!binaryForExpr) {
+      block = this.parseBlock()
+      if (!block) {
+        if (this.state.inFCallImplicitArgs) {
+          this.state = state
+          return undefined
+        }
+        throw new Error(`Expected a block in a '${operator.val} expression`)
+      }
+      if (block.expressions.length === 0) {
+        if (this.state.inFCallImplicitArgs) {
+          this.state = state
+          return undefined
+        }
+        throw new Error(`Empty block in a '${operator.val}' expression`)
+      }
     }
     return new nodes.ForExpression(operator, iter1, iter2, iterType, target, block)
   }
@@ -1029,7 +1057,7 @@ export class Parser {
   }
 
   private parseExpression(opts?: ParseExpressionState): nodes.Expression | undefined {
-    return this.parseBinaryExpr(opts)
+    return this.parseForExpression2(opts)
   }
 
   private parseReturn(): nodes.Node | undefined {

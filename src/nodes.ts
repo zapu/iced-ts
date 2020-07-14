@@ -298,12 +298,35 @@ export class ForExpression extends Expression {
 
   debugEmitCommon(): string {
     let ret = `for ${this.iter.debugEmitCommon()}`
-    if(this.iter2) {
+    if (this.iter2) {
       ret += `, ${this.iter2.debugEmitCommon()}`
     }
     ret += ` ${this.iterType.val} ${this.target.debugEmitCommon()}`
     ret += ` { ${this.block.debugEmitCommon()} }`
     return ret
+  }
+}
+
+export class ForExpression2 extends Expression {
+  expr: Expression
+  loop: ForExpression
+
+  constructor(expr: Expression, loop: ForExpression) {
+    super()
+    this.expr = expr
+    this.loop = loop
+  }
+
+  emit(): string {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    throw new Error("Method not implemented.")
   }
 }
 

@@ -14,6 +14,7 @@ Parsing:
 - [ ] `break` / `continue` special statements
 - [ ] `else` block
 
-- [ ] in, of, instanceof and: !in, !of, !instanceof
+- [ ] `in`, `of`, instanceof and: !in, !of, !instanceof
+    - [ ] `in`, `of` will definitely break some loop stuff, fix that
 
 - [ ] assign to array / object (pattern matching)

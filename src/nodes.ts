@@ -302,7 +302,9 @@ export class ForExpression extends Expression {
       ret += `, ${this.iter2.debugEmitCommon()}`
     }
     ret += ` ${this.iterType.val} ${this.target.debugEmitCommon()}`
-    ret += ` { ${this.block?.debugEmitCommon() ?? ''} }`
+    if(this.block) {
+      ret += ` { ${this.block.debugEmitCommon()} }`
+    }
     return ret
   }
 }
@@ -326,7 +328,7 @@ export class ForExpression2 extends Expression {
   }
 
   debugEmitCommon(): string {
-    throw new Error("Method not implemented.")
+    return `${this.expr.debugEmitCommon()} ${this.loop.debugEmitCommon()}`
   }
 }
 

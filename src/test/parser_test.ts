@@ -541,6 +541,10 @@ foo
   // instead of `foo(v for k ...)`
   { input: 'foo v for k,v of obj', expected: 'foo(v) for k, v of obj' },
 
+  // Nested for loop expressions
+  { input: 'x for x in xs for xs in list', expected: 'x for x in xs for xs in list' },
+  { input: 'ret = (x for x in xs for xs in list)', expected: 'ret = (x for x in xs for xs in list)' },
+
   { input: 'for 2*x,y in arr then x', error: /Expected left-hand value after 'for'/ },
   // TODO: Bad error message here: "Expected 'in' or 'of' after iterator, got '("
   { input: 'for x,y() in arr then x', error: true },

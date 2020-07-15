@@ -7,9 +7,9 @@ Parsing:
 
 - [x] `if` statements w/ block or w/ `then`
 - [x] "post" `if` (`foo() if condition`, `return if condition` etc.)
-- [ ] expression for loops like:
+- [x] expression for loops like:
     `x for x in arr`
-- [ ] including the weird ones like
+- [x] including the weird ones like
     `x for x in xs for xs in list`
 - [ ] `break` / `continue` special statements
 - [ ] `else` block
@@ -17,4 +17,5 @@ Parsing:
 - [ ] `in`, `of`, instanceof and: !in, !of, !instanceof
     - [ ] `in`, `of` will definitely break some loop stuff, fix that
 
+- [ ] array / object access `x[1]` `obj.x`
 - [ ] assign to array / object (pattern matching)

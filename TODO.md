@@ -3,6 +3,14 @@ Parsing:
 - [ ] fix identifier scanning like:
     `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`
 
+- [ ] one line multiple expressions, e.g.:
+        ```
+            foo = ->
+                num = 10; eq  2, (num &= 3)
+                num = 10; eq  2, (num |= 3)
+        ```
+        (this is all legal coffeescript from test/operators.coffee)
+
 - [ ] Array literals
 
 - [x] `if` statements w/ block or w/ `then`

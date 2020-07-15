@@ -1103,6 +1103,23 @@ export class Parser {
       this.parseExpression()
   }
 
+  // Returns last semicolon taken if there was more than one, or undefined if
+  // there wasn't any. This is used in blocks to parse stuff like:
+  // foo = ->
+  //    hello();;;;world();
+  private parseOneOrMoreSemicolons(): Token | undefined {
+    let ret = undefined
+    for(;;) {
+      const semicolon = this.peekToken()
+      if(semicolon?.type === ';') {
+        ret = this.takeToken()
+      } else {
+        break
+      }
+    }
+    return ret
+  }
+
   private parseBlock(rootBlock?: boolean, inIfExpr?: boolean) {
     const state = this.cloneState()
     const block = new nodes.Block()
@@ -1130,7 +1147,7 @@ export class Parser {
       // function def. token).
       let blockIndent: number | undefined = undefined;
 
-      for (; ;) {
+      blockLoop: for (; ;) {
         const lineStartPos = this.state.pos
         const indent = this.moveToNextLine(true /* inBlock */)
 
@@ -1166,14 +1183,22 @@ export class Parser {
           }
         }
 
-        const statement = this.parseStatement()
-        if (!statement) {
-          break
+        for (; ;) {
+          // One or more statements separated by semicolons.
+          const statement = this.parseStatement()
+          if (!statement) {
+            break blockLoop
+          }
+          block.expressions.push(statement)
+          this.parseOneOrMoreSemicolons()
+          if(this.peekNewline()) {
+            break
+          }
         }
-        block.expressions.push(statement)
 
         const separator = this.peekToken()
         if (!separator) {
+          // End of token stream - just get out.
           break
         } else if (separator.type !== 'NEWLINE') {
           throw new Error(`Unexpected after expression: ${separator.val}`);

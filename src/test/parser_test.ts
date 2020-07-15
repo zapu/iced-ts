@@ -556,6 +556,24 @@ foo
   { input: 'for x,y() in arr then x', error: true },
 
   { input: 'foo(x for x in arr)', expected: 'foo(x for x in arr)' },
+
+  // One line can hold multiple statements / expressions separated by ';', the
+  // semicolon-separated expressions are not only limited to one-line blocks.
+  // Inputs below should be functionally identical.
+  { input: 'foo = -> m = 10; m |= 2', expected: 'foo = () -> {m = 10;m |= 2}' },
+  { input: 'foo = ->\n  m = 10\n  m |= 2', expected: 'foo = () -> {m = 10;m |= 2}' },
+  { input: 'foo = ->\n  m = 10; m |= 2', expected: 'foo = () -> {m = 10;m |= 2}' },
+  { input: 'foo = ->\n  m = 10;m |= 2', expected: 'foo = () -> {m = 10;m |= 2}' },
+  { input: 'foo = ->\n  m = 10 ; m |= 2', expected: 'foo = () -> {m = 10;m |= 2}' },
+
+  // Theres a number of weird semicolon combinations that are also legal in
+  // coffeescript.
+  { input: 'foo = ->\n a();b();', expected: 'foo = () -> {a();b()}' },
+  { input: 'foo = ->\n a();;;b()', expected: 'foo = () -> {a();b()}' },
+  { input: 'foo = ->\n a();;;b();;', expected: 'foo = () -> {a();b()}' },
+
+  // Some semicolons are not legal though
+  { input: 'foo = ->\n ;a()', error: true },
 ]
 
 if (runAll(tests)) {

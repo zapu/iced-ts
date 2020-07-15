@@ -53,7 +53,11 @@ interface ParseExpressionState {
   // literal starting on a new line, with optional indentation.
   exprIndent?: number
 
-  // Are we trying to parse implicit function call argument?
+  // Are we trying to parse implicit function call argument? Behavior of some
+  // of the parsing is going to change, e.g. we are never going to parse `x for
+  // x ...` expresion in implicit function call, as well as we are going to
+  // stop at binary 'IF' and 'UNLESS', to make parsing less greedy (so `x 1 if
+  // cond` is `x(1) if cond`, not `x(1 if cond)`).
   implicitFcallArg?: boolean
 }
 
@@ -494,17 +498,17 @@ export class Parser {
       return undefined
     }
     const operator = this.takeToken()
-    const iter1 = this.parseExpression()
+    const iter1 = this.parseLeftHandValue()
     if (!iter1) {
-      throw new Error(`Expected iterator after '${operator.val}'`)
+      throw new Error(`Expected left-hand value after '${operator.val}', at '${this.peekToken()?.val}'`)
     }
     let iter2 = undefined
     if (this.peekToken()?.type === ',') {
       const comma = this.takeToken()
       // Second component of target.
-      iter2 = this.parseExpression()
+      iter2 = this.parseLeftHandValue()
       if (!iter2) {
-        throw new Error(`Expected an expression after '${comma.val}' in '${operator.val}' expression`)
+        throw new Error(`Expected left-hand value after '${comma.val}' in '${operator.val}' expression, at '${this.peekToken()?.val}'`)
       }
     }
     const iterType = this.takeToken()
@@ -595,9 +599,13 @@ export class Parser {
     return new nodes.IfExpression(operator, condition, block, elsePart)
   }
 
+  private parseLeftHandValue() {
+    return this.parseIdentifier() ?? this.parseThisAccess()
+  }
+
   private parseAssign(): nodes.Assign | undefined {
     const state = this.cloneState()
-    const target = this.parseIdentifier() ?? this.parseThisAccess()
+    const target = this.parseLeftHandValue()
     if (!target) {
       return undefined
     }
@@ -924,7 +932,7 @@ export class Parser {
     return new nodes.Function(argList, body, bindThis)
   }
 
-  private parseThisAccess(): nodes.Expression | undefined {
+  private parseThisAccess(): nodes.PropertyAccess | undefined {
     const maybeShortThis = this.peekToken()
     if (maybeShortThis?.type === 'SHORT_THIS') {
       const pos = this.state.pos

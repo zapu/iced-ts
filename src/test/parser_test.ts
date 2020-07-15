@@ -510,6 +510,7 @@ foo
   { input: 'if x\nhello()', error: /Empty block in an 'if'/ },
   { input: 'unless x\nhello()', error: /Empty block in an 'unless'/ },
 
+  // Loops
   { input: 'loop x()', expected: 'loop { x() }' },
   { input: 'loop\n  x()', expected: 'loop { x() }' },
   { input: 'loop\n  x()\n  y()', expected: 'loop { x();y() }' },
@@ -536,7 +537,13 @@ foo
   { input: 'numbers = (2*x for x in arr)', expected: 'numbers = (2 * x for x in arr)' },
   { input: 'foo x for x in arr', expected: 'foo(x) for x in arr' },
   { input: 'foo 2*x for x in arr', expected: 'foo(2 * x) for x in arr' },
+  // ForExpression2 can't be greedy in imp fcalls, we want `foo(v) for k ...`
+  // instead of `foo(v for k ...)`
   { input: 'foo v for k,v of obj', expected: 'foo(v) for k, v of obj' },
+
+  { input: 'for 2*x,y in arr then x', error: /Expected left-hand value after 'for'/ },
+  // TODO: Bad error message here: "Expected 'in' or 'of' after iterator, got '("
+  { input: 'for x,y() in arr then x', error: true },
 
   { input: 'foo(x for x in arr)', expected: 'foo(x for x in arr)' },
 ]

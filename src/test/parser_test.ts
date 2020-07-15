@@ -161,6 +161,12 @@ const tests: TestCase[] = [
   { input: 'foo(2) + 3', expected: 'foo(2) + 3' },
   { input: 'foo (2) + 3', expected: 'foo((2) + 3)' },
 
+  // Binary functions (IN/OF) and function calls
+  { input: 'x in arr', expected: 'x in arr' },
+  { input: 'foo x in arr', expected: 'foo(x in arr)' },
+  { input: 'foo x of obj', expected: 'foo(x of obj)' },
+  { input: 'foo a, x of obj', expected: 'foo(a,x of obj)' },
+
   // Assignments
   { input: 'a = 2', expected: 'a = 2' },
   { input: 'a =\n\n2', expected: 'a = 2' },
@@ -169,7 +175,7 @@ const tests: TestCase[] = [
   { input: 'a ^= 2', expected: 'a ^= 2' },
   { input: 'a |= 2 | x', expected: 'a |= 2 | x' },
 
-  { input: `foo\n20: 2`, expected: 'foo;{20: 2}'},
+  { input: `foo\n20: 2`, expected: 'foo;{20: 2}' },
 
   // `if` / `unless` in a binary expression
   { input: 'v if v', expected: 'v if v' },
@@ -516,7 +522,7 @@ foo
   { input: 'loop\n  x()\n  y()', expected: 'loop { x();y() }' },
   { input: 'loop\nx()', error: /Empty block in a 'loop' expression/ },
 
-  { input: 'until x > 2 then x = y()', expected: 'until (x > 2) { x = y() }'},
+  { input: 'until x > 2 then x = y()', expected: 'until (x > 2) { x = y() }' },
 
   { input: `for x in arr then x()`, expected: 'for x in arr { x() }' },
   { input: `for x in arr\n  x()`, expected: 'for x in arr { x() }' },

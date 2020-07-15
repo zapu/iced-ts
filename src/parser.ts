@@ -77,8 +77,7 @@ function isBinary(token: Token | undefined): boolean {
     ['+', '-', '*', '/', '|', '^',
       'is', 'isnt', '==', '!=',
       '>=', '<=', '>', '<'].includes(token.val)) ||
-    token.type === 'IF' ||
-    token.type === 'UNLESS')
+    ['IF', 'UNLESS', 'IN', 'OF'].includes(token.type))
 }
 
 export class Parser {

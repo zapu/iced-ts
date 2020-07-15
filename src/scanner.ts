@@ -32,12 +32,15 @@ const commonTokens: { [str: string]: TokenType } = {
 
     'is': 'OPERATOR',
     'isnt': 'OPERATOR',
+
     '==': 'OPERATOR',
     '!=': 'OPERATOR',
     '>=': 'OPERATOR',
     '<=': 'OPERATOR',
-    '>': 'OPERATOR',
-    '<': 'OPERATOR',
+
+    '<<': 'OPERATOR',
+    '>>>': 'OPERATOR',
+    '>>': 'OPERATOR',
 
     '=': 'ASSIGN_OPERATOR',
     '+=': 'ASSIGN_OPERATOR',
@@ -46,6 +49,12 @@ const commonTokens: { [str: string]: TokenType } = {
     '/=': 'ASSIGN_OPERATOR',
     '^=': 'ASSIGN_OPERATOR',
     '|=': 'ASSIGN_OPERATOR',
+    '<<=': 'ASSIGN_OPERATOR',
+    '>>>=': 'ASSIGN_OPERATOR',
+    '>>=': 'ASSIGN_OPERATOR',
+
+    '>': 'OPERATOR',
+    '<': 'OPERATOR',
 
     '+': 'OPERATOR',
     '-': 'OPERATOR',
@@ -53,6 +62,7 @@ const commonTokens: { [str: string]: TokenType } = {
     '*': 'OPERATOR',
     '^': 'OPERATOR',
     '|': 'OPERATOR',
+    '&': 'OPERATOR',
 
     'return': 'RETURN',
 
@@ -244,7 +254,7 @@ export class Scanner {
                 this.scanWhitespace()
 
             if (!token) {
-                throw new Error("no token at")
+                throw new Error(`no token at: ${this.chunk}`)
             }
 
             pushToken(token)

@@ -1210,15 +1210,12 @@ export class Parser {
         // Restore indent stack
         this.state.indentStack = this.state.indentStack.slice(0, -1)
       }
-    } else if (this.peekToken()) {
+    } else {
       // anything else (that's not a whitespace)
       loop: for (; ;) {
         const expr = this.parseExpression()
         if (!expr) {
-          if (this.state.inParens) {
-            return block
-          }
-          throw new Error(`Expected an expression (at '${this.peekToken()?.val}')`)
+          break loop
         }
 
         block.expressions.push(expr)
@@ -1228,7 +1225,7 @@ export class Parser {
           case undefined: // end of file
             break loop
           case ';':
-            this.takeToken()
+            this.parseOneOrMoreSemicolons()
             continue
           case ')':
             if (this.state.inParens) {

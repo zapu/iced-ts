@@ -572,7 +572,13 @@ foo
   { input: 'foo = ->\n a();;;b()', expected: 'foo = () -> {a();b()}' },
   { input: 'foo = ->\n a();;;b();;', expected: 'foo = () -> {a();b()}' },
 
+  { input: 'foo = -> a();b()', expected: 'foo = () -> {a();b()}' },
+  { input: 'foo = -> a();;;b()', expected: 'foo = () -> {a();b()}' },
+  { input: 'foo = -> a();b();', expected: 'foo = () -> {a();b()}' },
+
+
   // Some semicolons are not legal though
+  { input: 'foo = -> ;a()', error: /Expected an expression/ },
   { input: 'foo = ->\n ;a()', error: true },
 ]
 

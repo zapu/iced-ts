@@ -226,6 +226,12 @@ export class BinaryExpression extends Expression {
       case '!=':
       case 'isnt':
         return this.left.debugEvalJS() !== this.right.debugEvalJS()
+      case '%':
+        return this.left.debugEvalJS() % this.right.debugEvalJS()
+      case '%%':
+        const a = +this.left.debugEvalJS()
+        const b = +this.right.debugEvalJS()
+        return (a % b + b) % b
       default:
         throw new Error(`Don't know how to evalJS with ${this.operator.val}`)
     }

@@ -77,7 +77,8 @@ function isBinary(token: Token | undefined): boolean {
     ['+', '-', '*', '/', '|', '^', '&',
       'is', 'isnt', '==', '!=',
       '>=', '<=', '>', '<',
-      '<<', '>>>', '>>', '?'
+      '<<', '>>>', '>>', '?',
+      '%%', '%',
     ].includes(token.val)) ||
     ['IF', 'UNLESS', 'IN', 'OF'].includes(token.type))
 }

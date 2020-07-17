@@ -174,6 +174,7 @@ const tests: TestCase[] = [
   { input: 'a *= 2', expected: 'a *= 2' },
   { input: 'a ^= 2', expected: 'a ^= 2' },
   { input: 'a |= 2 | x', expected: 'a |= 2 | x' },
+  { input: 'a ?= 10', expected: 'a ?= 10' },
 
   { input: `foo\n20: 2`, expected: 'foo;{20: 2}' },
 

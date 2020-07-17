@@ -77,7 +77,7 @@ function isBinary(token: Token | undefined): boolean {
     ['+', '-', '*', '/', '|', '^', '&',
       'is', 'isnt', '==', '!=',
       '>=', '<=', '>', '<',
-      '<<', '>>>', '>>'
+      '<<', '>>>', '>>', '?'
     ].includes(token.val)) ||
     ['IF', 'UNLESS', 'IN', 'OF'].includes(token.type))
 }
@@ -1109,9 +1109,9 @@ export class Parser {
   //    hello();;;;world();
   private parseOneOrMoreSemicolons(): Token | undefined {
     let ret = undefined
-    for(;;) {
+    for (; ;) {
       const semicolon = this.peekToken()
-      if(semicolon?.type === ';') {
+      if (semicolon?.type === ';') {
         ret = this.takeToken()
       } else {
         break
@@ -1191,7 +1191,7 @@ export class Parser {
           }
           block.expressions.push(statement)
           this.parseOneOrMoreSemicolons()
-          if(this.peekNewline()) {
+          if (this.peekNewline()) {
             break
           }
         }

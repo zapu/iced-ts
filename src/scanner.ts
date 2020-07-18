@@ -131,6 +131,10 @@ export interface Token {
     type: TokenType
     val: string
     consumed: number
+
+    lineNumber?: number
+    colNumber?: number
+    charPos?: number
 }
 
 export class Scanner {
@@ -138,9 +142,15 @@ export class Scanner {
     pos: number = 0
     chunk: string = ""
 
+    lineNumber: number = 0
+    colNumber: number = 0
+
     reset(contents: string) {
         this.pos = 0
         this.contents = contents
+
+        this.lineNumber = 0
+        this.colNumber = 0
     }
 
     public stash(): number {
@@ -261,6 +271,17 @@ export class Scanner {
 
             if (!token) {
                 throw new Error(`no token at: ${this.chunk.substring(0,10)}...`)
+            }
+
+            token.lineNumber = this.lineNumber
+            token.colNumber = this.colNumber
+            token.charPos = this.pos
+
+            if (token.type === 'NEWLINE') {
+                this.colNumber = 0
+                this.lineNumber++
+            } else {
+                this.colNumber += token.consumed
             }
 
             pushToken(token)

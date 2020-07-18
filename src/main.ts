@@ -25,7 +25,7 @@ async function main() {
   scanner.reset(contents)
   const tokens = scanner.scan()
   console.log('tokens:')
-  console.log(tokens)
+  console.log(tokens.map(({type, val}) => ({type, val})))
 
   const parser = new Parser()
   parser.reset(tokens)

@@ -953,7 +953,8 @@ export class Parser {
   }
 
   private parseUnaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
-    // Check for prefix unary operation
+    // Check for prefix unary operation. There can be more than one, expect for
+    // some unary operations which are "final".
     const maybePrefix = this.peekToken()
     if (maybePrefix && isUnary(maybePrefix)) {
       const pos = this.state.pos

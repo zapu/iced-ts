@@ -36,7 +36,6 @@ function runAll(tests: TestCase[]) {
       } else {
         console.log(`[+] "${inputCon}" -> '${commonEmit}'`)
       }
-
     } catch (err) {
       if (test.error) {
         let ok = true
@@ -86,6 +85,16 @@ const tests: TestCase[] = [
   { input: '++i', expected: '++i' },
   { input: 'i = i++', expected: 'i = i++' },
   { input: 'i = ++i', expected: 'i = ++i' },
+
+  // Chained unary expressions
+  { input: '- - i', expected: '- -i' },
+  { input: '- -i', expected: '- -i' },
+  { input: '+ - +i', expected: '+ - +i' },
+  { input: '+ ++i', expected: '+ ++i' },
+  { input: '++ +i', error: true },
+  { input: '- + -+ 1', expected: '- + - + 1' },
+  { input: '- + - - 1', expected: '- + - - 1' },
+  { input: 'foo - - - 1', expected: 'foo - - - 1' },
 
   // Almost implicit function calls, but targets are not identifiers or
   // parenthesized expressions, so they end up being binary operations.

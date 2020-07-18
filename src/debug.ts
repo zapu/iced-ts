@@ -8,7 +8,7 @@ async function main() {
 //   hello : world
 //   'hello': 50221
 // `
-  let contents = `foo = ->\n  m = 10; m |= 2`
+  let contents = `+ ++ +i`
 
   console.log('input:')
   console.log(contents.replace(/ /g, '·').replace(/\n/g, '⏎\n'))

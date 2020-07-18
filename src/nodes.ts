@@ -308,7 +308,7 @@ export class ForExpression extends Expression {
       ret += `, ${this.iter2.debugEmitCommon()}`
     }
     ret += ` ${this.iterType.val} ${this.target.debugEmitCommon()}`
-    if(this.block) {
+    if (this.block) {
       ret += ` { ${this.block.debugEmitCommon()} }`
     }
     return ret
@@ -545,8 +545,13 @@ export abstract class UnaryExpression extends Expression {
     }
   }
 
-  debugEmitCommon() {
-    return `${this.operator.val}${this.expression.debugEmitCommon()}`
+  debugEmitCommon(): string {
+    if (this.expression instanceof UnaryExpression) {
+      // Emit a space before the expression to avoid emits like
+      return `${this.operator.val} ${this.expression.debugEmitCommon()}`
+    } else {
+      return `${this.operator.val}${this.expression.debugEmitCommon()}`
+    }
   }
 }
 

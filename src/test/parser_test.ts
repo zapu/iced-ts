@@ -42,6 +42,7 @@ function runAll(tests: TestCase[]) {
         const testError = test.error
         if (util.types.isRegExp(testError) && !testError.test(err.message)) {
           console.error(`[x] Failed for input: "${inputCon}": expected error to match ${testError} but got "${err.message}"`)
+          failCount++
           ok = false
         }
 
@@ -91,10 +92,13 @@ const tests: TestCase[] = [
   { input: '- -i', expected: '- -i' },
   { input: '+ - +i', expected: '+ - +i' },
   { input: '+ ++i', expected: '+ ++i' },
-  { input: '++ +i', error: true },
-  { input: '- + -+ 1', expected: '- + - + 1' },
-  { input: '- + - - 1', expected: '- + - - 1' },
-  { input: 'foo - - - 1', expected: 'foo - - - 1' },
+  { input: '++ +i', error: /Expected an expression after unary operator '\+\+'/ },
+  { input: '-- +i', error: /Expected an expression after unary operator '\-\-'/ },
+  { input: '+ ++ +i', error: /Expected an expression after unary operator '\+\+'/ },
+  { input: '-\n-\n-\n1', expected: '- - -1' },
+  { input: '- + -+ 1', expected: '- + - +1' },
+  { input: '- + - - 1', expected: '- + - -1' },
+  { input: 'foo - - - 1', expected: 'foo - - -1' },
 
   // Almost implicit function calls, but targets are not identifiers or
   // parenthesized expressions, so they end up being binary operations.

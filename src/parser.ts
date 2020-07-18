@@ -967,14 +967,38 @@ export class Parser {
         this.state.pos = pos
         return undefined
       }
-      if (this.peekNewline()) {
-        this.moveToNextLine()
+      const unaryPrefixes = [maybePrefix]
+      let finalPrefix = ['++', '--'].includes(maybePrefix.val) ? maybePrefix : undefined
+      for (; ;) {
+        if (this.peekNewline()) {
+          this.moveToNextLine()
+        }
+        const nextPrefix = this.peekToken()
+        if (nextPrefix && isUnary(nextPrefix)) {
+          if (finalPrefix) {
+            throw new Error(`Expected an expression after unary operator '${finalPrefix.val}' got another operator '${nextPrefix.val}'`)
+          }
+          if (['++', '--'].includes(nextPrefix.val)) {
+            finalPrefix = nextPrefix
+          }
+          unaryPrefixes.push(this.takeToken())
+        } else {
+          break
+        }
       }
       const expr = this.parsePrimaryExpr()
       if (!expr) {
-        throw new Error(`Expected expression after unary operator '${prefixOp.val}'`)
+        throw new Error(`Expected expression after unary operator '${unaryPrefixes[unaryPrefixes.length - 1].val}'`)
       }
-      return new nodes.PrefixUnaryExpression(prefixOp, expr)
+      if (unaryPrefixes.length === 1) {
+        return new nodes.PrefixUnaryExpression(prefixOp, expr)
+      } else {
+        let curExpr = expr
+        for (let i = unaryPrefixes.length - 1; i >= 0; i--) {
+          curExpr = new nodes.PrefixUnaryExpression(unaryPrefixes[i], curExpr)
+        }
+        return curExpr
+      }
     }
 
     const expr = this.parsePrimaryExpr(opts)

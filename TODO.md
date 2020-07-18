@@ -10,7 +10,11 @@ Parsing:
         `++ --i`
         `++ i++`
 
-- [ ] one line multiple expressions, e.g.:
+- [ ] prototype operators
+        `@::prop`
+        `this::prop`
+
+- [x] one line multiple expressions, e.g.:
         ```
             foo = ->
                 num = 10; eq  2, (num &= 3)

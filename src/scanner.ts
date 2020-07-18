@@ -38,10 +38,6 @@ const commonTokens: { [str: string]: TokenType } = {
     '>=': 'OPERATOR',
     '<=': 'OPERATOR',
 
-    '<<': 'OPERATOR',
-    '>>>': 'OPERATOR',
-    '>>': 'OPERATOR',
-
     '=': 'ASSIGN_OPERATOR',
     '+=': 'ASSIGN_OPERATOR',
     '-=': 'ASSIGN_OPERATOR',
@@ -54,6 +50,10 @@ const commonTokens: { [str: string]: TokenType } = {
     '>>>=': 'ASSIGN_OPERATOR',
     '>>=': 'ASSIGN_OPERATOR',
     '?=': 'ASSIGN_OPERATOR',
+
+    '<<': 'OPERATOR',
+    '>>>': 'OPERATOR',
+    '>>': 'OPERATOR',
 
     '?': 'OPERATOR',
 

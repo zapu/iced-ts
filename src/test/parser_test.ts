@@ -590,6 +590,7 @@ foo
   { input: 'foo = -> a();;;b()', expected: 'foo = () -> {a();b()}' },
   { input: 'foo = -> a();b();', expected: 'foo = () -> {a();b()}' },
 
+  { input: 'num = 10; eq  2, (num &= 3)', expected: 'num = 10;eq(2,(num &= 3))' },
 
   // Some semicolons are not legal though
   { input: 'foo = -> ;a()', error: /Expected an expression/ },

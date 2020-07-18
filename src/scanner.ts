@@ -49,6 +49,7 @@ const commonTokens: { [str: string]: TokenType } = {
     '/=': 'ASSIGN_OPERATOR',
     '^=': 'ASSIGN_OPERATOR',
     '|=': 'ASSIGN_OPERATOR',
+    '&=': 'ASSIGN_OPERATOR',
     '<<=': 'ASSIGN_OPERATOR',
     '>>>=': 'ASSIGN_OPERATOR',
     '>>=': 'ASSIGN_OPERATOR',

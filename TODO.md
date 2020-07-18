@@ -3,7 +3,7 @@ Parsing:
 - [ ] fix identifier scanning like:
     `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`
 
-- [ ] multiple operators with whitespace
+- [x] multiple operators with whitespace
         `+ + - +1` -> `+ (+(-(+1)));`
     - but something like this is illegal:
         `++ +i`

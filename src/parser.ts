@@ -986,7 +986,7 @@ export class Parser {
           break
         }
       }
-      const expr = this.parsePrimaryExpr()
+      const expr = this.parsePropertyAccessExpr(opts)
       if (!expr) {
         throw new Error(`Expected expression after unary operator '${unaryPrefixes[unaryPrefixes.length - 1].val}'`)
       }
@@ -1001,7 +1001,7 @@ export class Parser {
       }
     }
 
-    const expr = this.parsePrimaryExpr(opts)
+    const expr = this.parsePropertyAccessExpr(opts)
 
     // Check for postfix unary operation
     if (expr && !this.peekSpace()) {
@@ -1020,6 +1020,24 @@ export class Parser {
       return new nodes.BuiltinPrimaryExpression(this.takeToken())
     }
     return undefined
+  }
+
+  private parsePropertyAccessExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
+    const primary = this.parsePrimaryExpr(opts)
+    if (!primary) {
+      return undefined
+    }
+
+    let result = primary
+    while (this.peekToken()?.type === '.') {
+      const dotOperator = this.takeToken()
+      const accessId = this.parseIdentifier()
+      if (!accessId) {
+        throw new Error(`Expected an identifier after '${dotOperator.val}', at ${this.peekToken()?.val}'`)
+      }
+      result = new nodes.PropertyAccess(result, accessId)
+    }
+    return result
   }
 
   private parsePrimaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
@@ -1050,7 +1068,7 @@ export class Parser {
       this.parseStringLiteral() ??
       this.parseIdentifier() ??
       this.parseBuiltinPrimary() ??
-      this.parseThisAccess()
+      this.parseLeftHandValue()
 
     if (simple) {
       return simple
@@ -1285,7 +1303,8 @@ export class Parser {
         // TODO: Ideally we would try to resume parsing here to try to tell
         // user what happened. E.g. maybe there's a letfover expression here
         // somehow.
-        console.log('leftovers:', token, this.tokens.slice(this.state.pos))
+        console.log('leftovers:', token,
+          this.tokens.slice(this.state.pos).map(({ type, val }) => ({ type, val })))
         throw new Error('found leftover tokens')
       }
     }

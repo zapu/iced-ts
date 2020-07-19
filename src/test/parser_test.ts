@@ -512,6 +512,11 @@ foo
   { input: '@hello()', expected: 'this.hello()' },
   { input: '@hello(+@bye)', expected: 'this.hello(+this.bye)' },
 
+  // Property access
+  { input: 'foo.bar', expected: 'foo.bar' },
+  { input: '(x.foo).bar', expected: '(x.foo).bar' },
+  { input: 'x.foo.bar', expected: 'x.foo.bar' },
+
   // If statements / expressions
   { input: 'if x\n  hello()', expected: 'if (x) { hello() }' },
   { input: 'unless x\n  hello()', expected: 'unless (x) { hello() }' },

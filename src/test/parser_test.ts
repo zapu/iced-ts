@@ -516,6 +516,9 @@ foo
   { input: 'foo.bar', expected: 'foo.bar' },
   { input: '(x.foo).bar', expected: '(x.foo).bar' },
   { input: 'x.foo.bar', expected: 'x.foo.bar' },
+  { input: '2.toString', expected: '2.toString' },
+  { input: 'test().bar', expected: 'test().bar' },
+  { input: '"test".toLowerCase', expected: '"test".toLowerCase' },
 
   // If statements / expressions
   { input: 'if x\n  hello()', expected: 'if (x) { hello() }' },

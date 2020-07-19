@@ -14,6 +14,10 @@ Parsing:
         `@::prop`
         `this::prop`
 
+- [ ] Fix parsing empty blocks like:
+    `foo = -> ;a()`
+    *should not* be parsed as `foo = () -> {}; a();` but instead error out.
+
 - [x] one line multiple expressions, e.g.:
         ```
             foo = ->

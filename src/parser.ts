@@ -602,7 +602,9 @@ export class Parser {
   }
 
   private parseLeftHandValue() {
-    return this.parseIdentifier() ?? this.parseThisAccess()
+    // return this.parsePropertyAccessExpr() ??
+    return this.parseIdentifier() ??
+      this.parseThisAccess()
   }
 
   private parseAssign(): nodes.Assign | undefined {
@@ -986,7 +988,7 @@ export class Parser {
           break
         }
       }
-      const expr = this.parsePropertyAccessExpr(opts)
+      const expr = this.parsePrimaryExpr(opts)
       if (!expr) {
         throw new Error(`Expected expression after unary operator '${unaryPrefixes[unaryPrefixes.length - 1].val}'`)
       }
@@ -1001,7 +1003,7 @@ export class Parser {
       }
     }
 
-    const expr = this.parsePropertyAccessExpr(opts)
+    const expr = this.parsePrimaryExpr(opts)
 
     // Check for postfix unary operation
     if (expr && !this.peekSpace()) {
@@ -1022,8 +1024,11 @@ export class Parser {
     return undefined
   }
 
-  private parsePropertyAccessExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
-    const primary = this.parsePrimaryExpr(opts)
+  private parsePropertyAccessExpr(opts?: ParseExpressionState, fCallTarget?: boolean): nodes.Expression | undefined {
+    const primary = (!fCallTarget ? this.parseFunctionCall() : undefined) ??
+      this.parseNumber() ??
+      this.parseIdentifier() ??
+      this.parseParentesiszedExpr()
     if (!primary) {
       return undefined
     }
@@ -1060,6 +1065,7 @@ export class Parser {
     const simple =
       this.parseFunction() ??
       this.parseObjectLiteral(opts) ??
+      // this.parsePropertyAccessExpr(opts) ??
       this.parseFunctionCall() ??
       this.parseIfExpression(opts) ??
       this.parseAnyLoopExpression(opts) ??
@@ -1068,7 +1074,7 @@ export class Parser {
       this.parseStringLiteral() ??
       this.parseIdentifier() ??
       this.parseBuiltinPrimary() ??
-      this.parseLeftHandValue()
+      this.parseThisAccess()
 
     if (simple) {
       return simple

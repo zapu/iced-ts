@@ -14,7 +14,7 @@ export type TokenType =
     'BREAK' | 'CONTINUE' |
     'BUILTIN_PRIMARY' |
     'UNARY' | 'UNARY_MATH' |
-    ',' | ';' | ':' |
+    ',' | ';' | ':' | '::' |
     '(' | ')' |
     '{' | '}' |
     '[' | ']' |
@@ -87,6 +87,8 @@ const commonTokens: { [str: string]: TokenType } = {
 
     'break': 'BREAK',
     'continue': 'CONTINUE',
+
+    '::': '::',
 
     '(': '(',
     ')': ')',

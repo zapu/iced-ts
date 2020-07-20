@@ -2,10 +2,25 @@ import { Scanner } from '../scanner'
 import { Parser } from '../parser'
 import * as util from 'util'
 
+const Colors = {
+  Reset: "\x1b[0m",
+  FgRed: "\x1b[31m"
+}
+
 interface TestCase {
   input: string
   expected?: string
   error?: boolean | RegExp
+}
+
+function writeErrorMsg(message?: any, ...optionalParams: any[]): void {
+  if (process.stderr.isTTY) {
+    process.stderr.write(Colors.FgRed)
+  }
+  console.error(message, ...optionalParams)
+  if (process.stderr.isTTY) {
+    process.stderr.write(Colors.Reset)
+  }
 }
 
 function runAll(tests: TestCase[]) {
@@ -28,10 +43,10 @@ function runAll(tests: TestCase[]) {
       const commonEmit = nodes?.debugEmitCommon()
 
       if (test.error) {
-        console.error(`[x] Failed for input: "${inputCon}": expected error, got '${commonEmit}'`)
+        writeErrorMsg(`[x] Failed for input: "${inputCon}": expected error, got '${commonEmit}'`)
         failCount++
       } else if (test.expected !== commonEmit) {
-        console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got '${commonEmit}'`)
+        writeErrorMsg(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got '${commonEmit}'`)
         failCount++
       } else {
         console.log(`[+] "${inputCon}" -> '${commonEmit}'`)
@@ -41,7 +56,7 @@ function runAll(tests: TestCase[]) {
         let ok = true
         const testError = test.error
         if (util.types.isRegExp(testError) && !testError.test(err.message)) {
-          console.error(`[x] Failed for input: "${inputCon}": expected error to match ${testError} but got "${err.message}"`)
+          writeErrorMsg(`[x] Failed for input: "${inputCon}": expected error to match ${testError} but got "${err.message}"`)
           failCount++
           ok = false
         }
@@ -50,14 +65,14 @@ function runAll(tests: TestCase[]) {
           console.log(`[+] "${inputCon} -> error as expected: "${err?.message}"`)
         }
       } else {
-        console.error(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got exception: ${err.message}`)
+        writeErrorMsg(`[x] Failed for input: "${inputCon}": expected '${test.expected}' got exception: ${err.message}`)
         console.error(err)
         failCount++
       }
     }
   }
   if (failCount > 0) {
-    console.error(`Total ${failCount} failing test(s).`)
+    writeErrorMsg(`Total ${failCount} failing test(s).`)
     return false
   }
   return true
@@ -72,6 +87,7 @@ const tests: TestCase[] = [
   // Also with arbitrary newlines and indent between the operator and and
   // expression.
   { input: '1 +\n2', expected: '1 + 2' },
+  { input: 'a +\n2', expected: 'a + 2' }, // even if left side is a valid call target
 
   // Unary expressions
   { input: '-3', expected: '-3' },
@@ -506,6 +522,10 @@ foo
   { input: "a 1,\n2\n3\n", expected: "a(1,2);3" },
   { input: "  a 1,\n  2\n  3\n", expected: "a(1,2);3" },
 
+  // '@' or 'this'
+  { input: 'foo(this)', expected: 'foo(this)' },
+  { input: 'foo(@)', expected: 'foo(this)' },
+
   // @-property access
   { input: '@hello', expected: 'this.hello' },
   { input: '@hello = 1', expected: 'this.hello = 1' },
@@ -519,6 +539,15 @@ foo
   { input: '2.toString', expected: '2.toString' },
   { input: 'test().bar', expected: 'test().bar' },
   { input: '"test".toLowerCase', expected: '"test".toLowerCase' },
+  { input: '"test".toLowerCase()', expected: '"test".toLowerCase()' },
+  { input: '"test".toString "utf8"', expected: '"test".toString("utf8")' },
+
+  // Prototype accesses
+  { input: 'obj::toString', expected: 'obj.prototype.toString' },
+  { input: '@::foo', expected: 'this.prototype.foo' },
+
+  // Access + assignment
+  { input: 'obj.prototype = prop: nonce', expected: 'obj.prototype = {prop: nonce}' },
 
   // If statements / expressions
   { input: 'if x\n  hello()', expected: 'if (x) { hello() }' },

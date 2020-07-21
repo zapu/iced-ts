@@ -1095,10 +1095,26 @@ export class Parser {
         continue
       }
 
-      const peek = this.peekToken()
+      let existentialOp = undefined
+      let peek = this.peekToken()
       if (!peek) {
         break
-      } else if (peek.type === '(') {
+      }
+      let state = undefined
+      if (peek.type === 'OPERATOR' && peek.val === '?') {
+        state = this.cloneState()
+        existentialOp = this.takeToken()
+        peek = this.peekToken()
+        if (!peek) {
+          this.state = state
+          break
+        }
+      }
+
+      // TODO: Wrap target nodes in `ExistentialExpression` instead of doing
+      // `existential?: Token` in nodes.ts
+
+      if (peek.type === '(') {
         this.takeToken()
         if (this.peekNewline()) {
           this.moveToNextLine()
@@ -1138,7 +1154,7 @@ export class Parser {
         if (!accessId) {
           throw new Error(`Expected an identifier after '${dotOp.val}', at '${this.peekToken()?.val}'`)
         }
-        currentExpr = new nodes.PropertyAccess(currentExpr, accessId)
+        currentExpr = new nodes.PropertyAccess(currentExpr, accessId, existentialOp)
       } else if (peek.type === '::') {
         const colonColonOp = this.takeToken()
         const accessId = this.parseIdentifier()
@@ -1161,8 +1177,14 @@ export class Parser {
           throw new Error(`Expected a closing bracket ']' to match '${openingBracket.val}' at '${this.peekToken()?.val}'`)
         }
         this.takeToken()
-        currentExpr = new nodes.ArrayAccess(currentExpr, indexExpr)
+        currentExpr = new nodes.ArrayAccess(currentExpr, indexExpr, existentialOp)
       } else {
+        if (state) {
+          // `state` is not undefined if there were some state changes that we
+          // need to unroll before breaking out of this loop. Right now this is
+          // only related to parsing existential operator.
+          this.state = state
+        }
         break
       }
     }

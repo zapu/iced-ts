@@ -650,6 +650,10 @@ foo
   { input: 'foo = -> ;a()', error: /Expected an expression/ },
   { input: 'foo = ->\n ;a()', error: true },
 
+  // Existential operator
+  { input: 'a?[b].x.y?.z', expected: 'a?[b].x.y?.z' },
+  { input: 'foo?().bar?.bz', expected: 'foo?().bar?.bz' },
+
   // Postfix existential operator
   { input: 'ok (if nonexistent? then false else true)', expected: 'ok((if (nonexistent?) { false } else { true }))' },
   { input: 'ok(if nonexistent? then false else true)', expected: 'ok(if (nonexistent?) { false } else { true })' },

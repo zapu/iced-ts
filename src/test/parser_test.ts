@@ -541,6 +541,7 @@ foo
   { input: '"test".toLowerCase', expected: '"test".toLowerCase' },
   { input: '"test".toLowerCase()', expected: '"test".toLowerCase()' },
   { input: '"test".toString "utf8"', expected: '"test".toString("utf8")' },
+  { input: 'x = !foo.bar', expected: 'x = !foo.bar' },
 
   // Prototype accesses
   { input: 'obj::toString', expected: 'obj.prototype.toString' },
@@ -560,6 +561,10 @@ foo
   // Access + assignment + for2 expression
   { input: 'foo().bar.baz = x * 2 for x in y', expected: 'foo().bar.baz = x * 2 for x in y' },
   { input: 'foo().bar.baz[x] = x * 2 for x in y', expected: 'foo().bar.baz[x] = x * 2 for x in y' },
+
+  // Array access
+  { input: 'arr[x]', expected: 'arr[x]' },
+  { input: 'arr[if x then y else z]', expected: 'arr[if (x) { y } else { z }]' },
 
   // If statements / expressions
   { input: 'if x\n  hello()', expected: 'if (x) { hello() }' },
@@ -644,6 +649,10 @@ foo
   // Some semicolons are not legal though
   { input: 'foo = -> ;a()', error: /Expected an expression/ },
   { input: 'foo = ->\n ;a()', error: true },
+
+  // Postfix existential operator
+  { input: 'ok (if nonexistent? then false else true)', expected: 'ok((if (nonexistent?) { false } else { true }))' },
+  { input: 'ok(if nonexistent? then false else true)', expected: 'ok(if (nonexistent?) { false } else { true })' },
 ]
 
 if (runAll(tests)) {

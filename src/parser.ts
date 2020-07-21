@@ -31,6 +31,7 @@ interface ParserState {
   // behavior i.e. during block parsing - which can end with close-paren, like:
   // setTimeout (-> hello(); world()), 10
   inParens: number
+  inBrackets: number
 
   // `moveToNextLine` by default will throw an error about "missing indentation"
   // if indent found in next line is smaller than `currentMinIndent`. But parsing
@@ -93,6 +94,7 @@ export class Parser {
       pos: 0,
       inFCall: 0,
       inParens: 0,
+      inBrackets: 0,
 
       indentStack: [],
 
@@ -1055,7 +1057,7 @@ export class Parser {
     // Check for postfix unary operation
     if (expr && !this.peekSpace()) {
       const maybePostfix = this.peekToken()
-      if (maybePostfix && maybePostfix.type === 'OPERATOR' && ['++', '--'].includes(maybePostfix.val)) {
+      if (maybePostfix && maybePostfix.type === 'OPERATOR' && ['++', '--', '?'].includes(maybePostfix.val)) {
         const postfixOp = this.takeToken()
         return new nodes.PostfixUnaryExpression(postfixOp, expr)
       }
@@ -1101,6 +1103,7 @@ export class Parser {
         if (this.peekNewline()) {
           this.moveToNextLine()
         }
+        this.state.inParens++
         const args = [] as nodes.Expression[]
         const firstArg = this.parseFunctionCallArgument()
         if (firstArg) {
@@ -1125,6 +1128,7 @@ export class Parser {
         if (this.peekToken()?.type !== ')') {
           throw new Error(`Expected ')' in function call, found '${this.peekToken()?.val}'`)
         }
+        this.state.inParens--
         this.takeToken()
 
         currentExpr = new nodes.FunctionCall(currentExpr, args)
@@ -1145,6 +1149,19 @@ export class Parser {
         currentExpr = new nodes.PropertyAccess(
           new nodes.PropertyAccess(currentExpr, new nodes.Identifier('prototype')),
           accessId)
+      } else if (peek.type === '[') {
+        const openingBracket = this.takeToken()
+        this.state.inBrackets++
+        const indexExpr = this.parseExpression()
+        this.state.inBrackets--
+        if (!indexExpr) {
+          throw new Error(`Expected an expression after '${openingBracket.val}', at '${this.peekToken()?.val}'`)
+        }
+        if (this.peekToken()?.type !== ']') {
+          throw new Error(`Expected a closing bracket ']' to match '${openingBracket.val}' at '${this.peekToken()?.val}'`)
+        }
+        this.takeToken()
+        currentExpr = new nodes.ArrayAccess(currentExpr, indexExpr)
       } else {
         break
       }
@@ -1387,6 +1404,12 @@ export class Parser {
             continue
           case ')':
             if (this.state.inParens) {
+              break loop
+            } else {
+              throw new Error(`Unexpected ${peekedTok?.val}`)
+            }
+          case ']':
+            if (this.state.inBrackets) {
               break loop
             } else {
               throw new Error(`Unexpected ${peekedTok?.val}`)

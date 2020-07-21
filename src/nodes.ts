@@ -600,6 +600,29 @@ export class PropertyAccess extends Expression {
   }
 }
 
+export class ArrayAccess extends Expression {
+  target: Expression
+  access: Expression
+
+  constructor(target: Expression, access: Expression) {
+    super()
+    this.target = target
+    this.access = access
+  }
+
+  emit(): string {
+    return `${this.target.emit()}.${this.access.emit()}`
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    return `${this.target.debugEmitCommon()}[${this.access.debugEmitCommon()}]`
+  }
+}
+
 export class Block extends Node {
   expressions: Expression[] = []
   indent: number = 0

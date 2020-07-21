@@ -3,7 +3,9 @@ Parsing:
 - [ ] Cleanup `parseFunctionCall`, `parseAssign` (unused functions,
   functionality moved to other rule functions).
 
-- [ ] array-like access `arr[x]`, add to `parseCallsAndAccesses`.
+- [x] array-like access `arr[x]`, add to `parseCallsAndAccesses`.
+
+- [ ] existential operators in accesses e.g. 'foo?.bar'
 
 - [ ] fix identifier scanning like:
     `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`

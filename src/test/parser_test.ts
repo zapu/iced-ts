@@ -545,9 +545,21 @@ foo
   // Prototype accesses
   { input: 'obj::toString', expected: 'obj.prototype.toString' },
   { input: '@::foo', expected: 'this.prototype.foo' },
+  { input: 'this::foo', expected: 'this.prototype.foo' },
 
   // Access + assignment
   { input: 'obj.prototype = prop: nonce', expected: 'obj.prototype = {prop: nonce}' },
+  { input: 'foo().bar.baz = x = 2 * y', expected: 'foo().bar.baz = x = 2 * y' },
+  { input: 'foo::toString = () -> \'hello\'', expected: 'foo.prototype.toString = () -> {\'hello\'}' },
+
+  // Assignment needs a left hand value on the left side of the assignment
+  // operator. But that's not a parse error - we want to continue parsing here
+  // and only error out in later stage.
+  { input: 'iput() = output', expected: 'iput() = output' },
+
+  // Access + assignment + for2 expression
+  { input: 'foo().bar.baz = x * 2 for x in y', expected: 'foo().bar.baz = x * 2 for x in y' },
+  { input: 'foo().bar.baz[x] = x * 2 for x in y', expected: 'foo().bar.baz[x] = x * 2 for x in y' },
 
   // If statements / expressions
   { input: 'if x\n  hello()', expected: 'if (x) { hello() }' },

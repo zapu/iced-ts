@@ -385,7 +385,7 @@ export class Parser {
 
   // Parse `x for x in arr`, so an expression followed by a forExpression.
   private parseForExpression2(opts?: ParseExpressionState): nodes.Expression | undefined {
-    const expr = this.parseBinaryExpr(opts)
+    const expr = this.parseAssignmentExpression(opts)
     if (!expr) {
       return undefined
     }
@@ -405,6 +405,46 @@ export class Parser {
       throw new Error(`We are in for expression but 'for' could not be parsed, at '${this.peekToken()?.val}'`)
     }
     return new nodes.ForExpression2(expr, forExpr)
+  }
+
+  private parseAssignmentExpression(opts?: ParseExpressionState): nodes.Expression | undefined {
+    let expr = this.parseBinaryExpr(opts)
+    if (!expr) {
+      return undefined
+    }
+    while (this.peekToken()?.type === 'ASSIGN_OPERATOR') {
+      // TODO: Check if expr is l-value.
+      const assignOp = this.takeToken()
+      let opts2 = opts
+      if (this.peekNewline()) {
+        const indent = this.moveToNextLine()
+
+        // TODO: CoffeeScript doesn't care if object literals start on the same
+        // indentation level, things like:
+
+        // obj =
+        // a : 1
+        // b : 2
+        // c = 3
+
+        // are legal, and parse to: `obj = {a : 1, b : 2}; c = 3;`.
+
+        if (indent >= this.currentIndentLevel()) {
+          // Assignment starts a new "implicit block". Important for things like
+          // object literals, which parse differently if they were started in
+          // the same line, compared to next line.
+          opts2 = { ...opts, exprIndent: indent }
+        }
+      }
+      const valueExpr = this.parseBinaryExpr(opts2)
+      if (!valueExpr) {
+        throw new Error(
+          `Expected an expression after '${assignOp.val}' assignment operator (at '${this.peekToken()?.val}')`
+        )
+      }
+      expr = new nodes.Assign(expr, assignOp, valueExpr)
+    }
+    return expr
   }
 
   private parseBinaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
@@ -609,7 +649,7 @@ export class Parser {
 
   private parseAssign(): nodes.Assign | undefined {
     const state = this.cloneState()
-    const target = this.parseLeftHandValue()
+    const target = this.parseCallsAndAccesses(/*{ assignLeftHand: true }*/)
     if (!target) {
       return undefined
     }
@@ -939,19 +979,26 @@ export class Parser {
   private parseThisAccess(): nodes.PropertyAccess | undefined {
     const maybeShortThis = this.peekToken()
     if (maybeShortThis?.type === 'SHORT_THIS') {
-      const pos = this.state.pos
+      const state = this.cloneState()
       const shortThis = this.takeToken() // take '@'
       if (this.peekSpace()) {
-        this.state.pos = pos
+        this.state = state
         return undefined
       }
       const id = this.parseIdentifier()
       if (!id) {
-        throw new Error(`unexpected ${this.peekToken()?.val} after '@'`)
+        this.state = state
+        return undefined
       }
       return new nodes.PropertyAccess(new nodes.ThisExpression(shortThis), id)
     }
     return undefined
+  }
+
+  private parseThis(): nodes.ThisExpression | undefined {
+    if (['SHORT_THIS', 'LONG_THIS'].includes(this.peekToken()?.type ?? '')) {
+      return new nodes.ThisExpression(this.takeToken())
+    }
   }
 
   private parseUnaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
@@ -961,7 +1008,7 @@ export class Parser {
     if (maybePrefix && isUnary(maybePrefix)) {
       const pos = this.state.pos
       const prefixOp = this.takeToken()
-      if (opts?.implicitFcallArg && this.peekSpace()) {
+      if (opts?.implicitFcallArg && (this.peekSpace() || this.peekNewline())) {
         // In expression like 'a - b', do not consider '- b' to be an unary
         // expression, because then we would end up parsing it as 'a(-b)'.
         //
@@ -988,7 +1035,7 @@ export class Parser {
           break
         }
       }
-      const expr = this.parsePrimaryExpr(opts)
+      const expr = this.parseCallsAndAccesses(opts)
       if (!expr) {
         throw new Error(`Expected expression after unary operator '${unaryPrefixes[unaryPrefixes.length - 1].val}'`)
       }
@@ -1003,7 +1050,7 @@ export class Parser {
       }
     }
 
-    const expr = this.parsePrimaryExpr(opts)
+    const expr = this.parseCallsAndAccesses(opts)
 
     // Check for postfix unary operation
     if (expr && !this.peekSpace()) {
@@ -1024,25 +1071,86 @@ export class Parser {
     return undefined
   }
 
-  private parsePropertyAccessExpr(opts?: ParseExpressionState, fCallTarget?: boolean): nodes.Expression | undefined {
-    const primary = (!fCallTarget ? this.parseFunctionCall() : undefined) ??
-      this.parseNumber() ??
-      this.parseIdentifier() ??
-      this.parseParentesiszedExpr()
-    if (!primary) {
+  private parseCallsAndAccesses(opts?: ParseExpressionState): nodes.Expression | undefined {
+    let currentExpr = this.parsePrimaryExpr(opts)
+    if (!currentExpr) {
       return undefined
     }
 
-    let result = primary
-    while (this.peekToken()?.type === '.') {
-      const dotOperator = this.takeToken()
-      const accessId = this.parseIdentifier()
-      if (!accessId) {
-        throw new Error(`Expected an identifier after '${dotOperator.val}', at ${this.peekToken()?.val}'`)
+    for (; ;) {
+      // The following is needed so that stuff like `1 +2` doesn't become
+      // `1(+2)` (but `1 + 2` instead).
+      // TODO: Better checks if currentExpr is a valid function call target
+      // (instead of `instanceof Number`).
+      if (this.peekSpace() && !(currentExpr instanceof nodes.Number)) {
+        // Expression followed by whitespace - has to be an implicit function
+        // call.
+        const args = this.parseImplicitFunctionCallArguments()
+        if (!args) {
+          break
+        }
+        currentExpr = new nodes.FunctionCall(currentExpr, args)
+        continue
       }
-      result = new nodes.PropertyAccess(result, accessId)
+
+      const peek = this.peekToken()
+      if (!peek) {
+        break
+      } else if (peek.type === '(') {
+        this.takeToken()
+        if (this.peekNewline()) {
+          this.moveToNextLine()
+        }
+        const args = [] as nodes.Expression[]
+        const firstArg = this.parseFunctionCallArgument()
+        if (firstArg) {
+          args.push(firstArg)
+          while (this.peekToken()?.type === ',') {
+            this.takeToken()
+            if (this.peekNewline()) {
+              this.moveToNextLine()
+            }
+            const arg = this.parseFunctionCallArgument()
+            if (!arg) {
+              throw new Error(`Expected an expression after ',' in function call (at '${this.peekToken()?.val}')`)
+            }
+            args.push(arg)
+          }
+        }
+
+        if (this.peekNewline()) {
+          this.moveToNextLine()
+        }
+
+        if (this.peekToken()?.type !== ')') {
+          throw new Error(`Expected ')' in function call, found '${this.peekToken()?.val}'`)
+        }
+        this.takeToken()
+
+        currentExpr = new nodes.FunctionCall(currentExpr, args)
+      } else if (peek.type === '.') {
+        const dotOp = this.takeToken()
+        const accessId = this.parseIdentifier()
+        if (!accessId) {
+          throw new Error(`Expected an identifier after '${dotOp.val}', at '${this.peekToken()?.val}'`)
+        }
+        currentExpr = new nodes.PropertyAccess(currentExpr, accessId)
+      } else if (peek.type === '::') {
+        const colonColonOp = this.takeToken()
+        const accessId = this.parseIdentifier()
+        if (!accessId) {
+          throw new Error(`Expected an identifier after '${colonColonOp.val}', at '${this.peekToken()?.val}'`)
+        }
+        // TODO: Emit new node type for `prototype` accesses
+        currentExpr = new nodes.PropertyAccess(
+          new nodes.PropertyAccess(currentExpr, new nodes.Identifier('prototype')),
+          accessId)
+      } else {
+        break
+      }
     }
-    return result
+
+    return currentExpr
   }
 
   private parsePrimaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
@@ -1066,15 +1174,15 @@ export class Parser {
       this.parseFunction() ??
       this.parseObjectLiteral(opts) ??
       // this.parsePropertyAccessExpr(opts) ??
-      this.parseFunctionCall() ??
+      // this.parseFunctionCall() ??
       this.parseIfExpression(opts) ??
       this.parseAnyLoopExpression(opts) ??
-      this.parseAssign() ??
       this.parseNumber() ??
       this.parseStringLiteral() ??
       this.parseIdentifier() ??
       this.parseBuiltinPrimary() ??
-      this.parseThisAccess()
+      this.parseThisAccess() ??
+      this.parseThis()
 
     if (simple) {
       return simple

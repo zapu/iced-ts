@@ -1,5 +1,10 @@
 Parsing:
 
+- [ ] Cleanup `parseFunctionCall`, `parseAssign` (unused functions,
+  functionality moved to other rule functions).
+
+- [ ] array-like access `arr[x]`, add to `parseCallsAndAccesses`.
+
 - [ ] fix identifier scanning like:
     `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`
 
@@ -10,7 +15,7 @@ Parsing:
         `++ --i`
         `++ i++`
 
-- [ ] prototype operators
+- [x] prototype operators
         `@::prop`
         `this::prop`
 
@@ -40,5 +45,5 @@ Parsing:
 - [ ] `in`, `of`, instanceof and: !in, !of, !instanceof
     - [ ] `in`, `of` will definitely break some loop stuff, fix that
 
-- [ ] array / object access `x[1]` `obj.x`
+- [x] object access `obj.x`
 - [ ] assign to array / object (pattern matching)

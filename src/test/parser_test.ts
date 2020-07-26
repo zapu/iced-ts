@@ -660,6 +660,9 @@ foo
 
   // unary prefix + postfix
   { input: '-foo?', expected: '- foo?' },
+  { input: '-a++' , expected: '-a++' },
+  { input: '++a?', expected: '++a?' }, // should mean "++a?"
+  { input: 'a++?', expected: 'a++?' }, // should mean "a++?"
 ]
 
 if (runAll(tests)) {

@@ -7,6 +7,10 @@ Parsing:
 
 - [x] existential operators in accesses e.g. 'foo?.bar'
     - [x] done again (redone)
+    - [ ] There is a wrong precedence on unary exprs vs. existential operator, e.g.
+        `++a?` is parsed as `++(a?)` but should be parsed as `(++a)?`.
+        Same with `a++?`, which fails to parse, but should be `(a++)?`.
+
 
 - [ ] fix identifier scanning like:
     `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`

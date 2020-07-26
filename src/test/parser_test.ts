@@ -657,6 +657,9 @@ foo
   // Postfix existential operator
   { input: 'ok (if nonexistent? then false else true)', expected: 'ok((if (nonexistent?) { false } else { true }))' },
   { input: 'ok(if nonexistent? then false else true)', expected: 'ok(if (nonexistent?) { false } else { true })' },
+
+  // unary prefix + postfix
+  { input: '-foo?', expected: '- foo?' },
 ]
 
 if (runAll(tests)) {

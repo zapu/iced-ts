@@ -547,7 +547,8 @@ export abstract class UnaryExpression extends Expression {
 
   debugEmitCommon(): string {
     if (this.expression instanceof UnaryExpression) {
-      // Emit a space before the expression to avoid emits like
+      // Emit a space before the expression to avoid emits like `--a` coming
+      // from `PrefixUnary('-', PrefixUnary('-', ID('a')))`.
       return `${this.operator.val} ${this.expression.debugEmitCommon()}`
     } else {
       return `${this.operator.val}${this.expression.debugEmitCommon()}`
@@ -580,21 +581,15 @@ export class PostfixUnaryExpression extends UnaryExpression {
 export class PropertyAccess extends Expression {
   target: Expression
   access: Expression
-  existential?: Token
 
-  constructor(target: Expression, access: Expression, existential?: Token) {
+  constructor(target: Expression, access: Expression) {
     super()
     this.target = target
     this.access = access
-
-    // TODO: Wrap target nodes in `ExistentialExpression` instead of doing
-    // `existential?: Token` in nodes.ts
-
-    // this.existential = existential
   }
 
   emit(): string {
-    return `${this.target.emit()}${this.existential?.val ?? ''}.${this.access.emit()}`
+    return `${this.target.emit()}.${this.access.emit()}`
   }
 
   debugEvalJS() {
@@ -602,24 +597,22 @@ export class PropertyAccess extends Expression {
   }
 
   debugEmitCommon(): string {
-    return `${this.target.debugEmitCommon()}${this.existential?.val ?? ''}.${this.access.debugEmitCommon()}`
+    return `${this.target.debugEmitCommon()}.${this.access.debugEmitCommon()}`
   }
 }
 
 export class ArrayAccess extends Expression {
   target: Expression
   access: Expression
-  existential?: Token
 
-  constructor(target: Expression, access: Expression, existential?: Token) {
+  constructor(target: Expression, access: Expression) {
     super()
     this.target = target
     this.access = access
-    this.existential = existential
   }
 
   emit(): string {
-    return `${this.target.emit()}${this.existential?.val ?? ''}[${this.access.emit()}]`
+    return `${this.target.emit()}[${this.access.emit()}]`
   }
 
   debugEvalJS() {
@@ -627,7 +620,7 @@ export class ArrayAccess extends Expression {
   }
 
   debugEmitCommon(): string {
-    return `${this.target.debugEmitCommon()}${this.existential?.val ?? ''}[${this.access.debugEmitCommon()}]`
+    return `${this.target.debugEmitCommon()}[${this.access.debugEmitCommon()}]`
   }
 }
 

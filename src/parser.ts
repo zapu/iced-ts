@@ -471,7 +471,7 @@ export class Parser {
       }
       const right = this.parseUnaryExpr()
       if (!right) {
-        throw new Error(`parse error after ${opToken.val}`)
+        throw new Error(`parse error after ${opToken.val}, expected another expression`)
       }
       if (left instanceof nodes.BinaryExpression) {
         // TODO: Make sure all operator priorities are defined
@@ -1057,7 +1057,7 @@ export class Parser {
     // Check for postfix unary operation
     if (expr && !this.peekSpace()) {
       const maybePostfix = this.peekToken()
-      if (maybePostfix && maybePostfix.type === 'OPERATOR' && ['++', '--', '?'].includes(maybePostfix.val)) {
+      if (maybePostfix && maybePostfix.type === 'OPERATOR' && ['++', '--'].includes(maybePostfix.val)) {
         const postfixOp = this.takeToken()
         return new nodes.PostfixUnaryExpression(postfixOp, expr)
       }
@@ -1095,24 +1095,18 @@ export class Parser {
         continue
       }
 
-      let existentialOp = undefined
       let peek = this.peekToken()
       if (!peek) {
         break
-      }
-      let state = undefined
-      if (peek.type === 'OPERATOR' && peek.val === '?') {
-        state = this.cloneState()
-        existentialOp = this.takeToken()
-        peek = this.peekToken()
-        if (!peek) {
-          this.state = state
-          break
-        }
+      } else if (peek.type === 'OPERATOR' && peek.val === '?') {
+        const existentialOp = this.takeToken()
+        currentExpr = new nodes.PostfixUnaryExpression(existentialOp, currentExpr)
       }
 
-      // TODO: Wrap target nodes in `ExistentialExpression` instead of doing
-      // `existential?: Token` in nodes.ts
+      peek = this.peekToken()
+      if (!peek) {
+        break
+      }
 
       if (peek.type === '(') {
         this.takeToken()
@@ -1154,7 +1148,7 @@ export class Parser {
         if (!accessId) {
           throw new Error(`Expected an identifier after '${dotOp.val}', at '${this.peekToken()?.val}'`)
         }
-        currentExpr = new nodes.PropertyAccess(currentExpr, accessId, existentialOp)
+        currentExpr = new nodes.PropertyAccess(currentExpr, accessId)
       } else if (peek.type === '::') {
         const colonColonOp = this.takeToken()
         const accessId = this.parseIdentifier()
@@ -1177,14 +1171,8 @@ export class Parser {
           throw new Error(`Expected a closing bracket ']' to match '${openingBracket.val}' at '${this.peekToken()?.val}'`)
         }
         this.takeToken()
-        currentExpr = new nodes.ArrayAccess(currentExpr, indexExpr, existentialOp)
+        currentExpr = new nodes.ArrayAccess(currentExpr, indexExpr)
       } else {
-        if (state) {
-          // `state` is not undefined if there were some state changes that we
-          // need to unroll before breaking out of this loop. Right now this is
-          // only related to parsing existential operator.
-          this.state = state
-        }
         break
       }
     }

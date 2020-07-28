@@ -526,7 +526,9 @@ export abstract class UnaryExpression extends Expression {
     this.operator = operator
     this.expression = expression
   }
+}
 
+export class PrefixUnaryExpression extends UnaryExpression {
   emit(): string {
     return `${this.operator.val}${this.expression.emit()}`
   }
@@ -549,14 +551,12 @@ export abstract class UnaryExpression extends Expression {
     if (this.expression instanceof UnaryExpression) {
       // Emit a space before the expression to avoid emits like `--a` coming
       // from `PrefixUnary('-', PrefixUnary('-', ID('a')))`.
-      return `${this.operator.val} ${this.expression.debugEmitCommon()}`
+      return `${this.operator.val}(${this.expression.debugEmitCommon()})`
     } else {
       return `${this.operator.val}${this.expression.debugEmitCommon()}`
     }
   }
 }
-
-export class PrefixUnaryExpression extends UnaryExpression { }
 
 export class PostfixUnaryExpression extends UnaryExpression {
   emit(): string {
@@ -574,7 +574,11 @@ export class PostfixUnaryExpression extends UnaryExpression {
   }
 
   debugEmitCommon() {
-    return `${this.expression.debugEmitCommon()}${this.operator.val}`
+    if (this.expression instanceof UnaryExpression) {
+      return `(${this.expression.debugEmitCommon()})${this.operator.val}`
+    } else {
+      return `${this.expression.debugEmitCommon()}${this.operator.val}`
+    }
   }
 }
 

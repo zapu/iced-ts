@@ -7,7 +7,7 @@ export type TokenType =
     'BLOCK_START' | 'BLOCK_END' |
     'COMMENT' | 'NEWLINE' | 'WHITESPACE' |
     'IDENTIFIER' | 'NUMBER' | 'STRING' |
-    'ASSIGN_OPERATOR' | 'OPERATOR' |
+    'ASSIGN_OPERATOR' | 'OPERATOR' | 'UNARY_DEC_INC' |
     'FUNC' | 'CLASS' | 'RETURN' |
     'IF' | 'UNLESS' | 'THEN' | 'ELSE' |
     'FOR' | 'UNTIL' | 'LOOP' | 'IN' | 'OF' |
@@ -27,8 +27,8 @@ const commonTokens: { [str: string]: TokenType } = {
 
     '\n': 'NEWLINE',
 
-    '++': 'OPERATOR',
-    '--': 'OPERATOR',
+    '++': 'UNARY_DEC_INC',
+    '--': 'UNARY_DEC_INC',
 
     'is': 'OPERATOR',
     'isnt': 'OPERATOR',

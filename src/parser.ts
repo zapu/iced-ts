@@ -63,13 +63,8 @@ interface ParseExpressionState {
 }
 
 function isUnary(token: Token): boolean {
-  if (['UNARY', 'UNARY_MATH'].includes(token.type)) {
-    return true
-  }
-  else if (token.type === 'OPERATOR' && ['+', '-', '++', '--'].includes(token.val)) {
-    return true
-  }
-  return false
+  return (token.type === 'UNARY' || token.type === 'UNARY_MATH' ||
+    (token.type === 'OPERATOR' && (token.val === '+' || token.val === '-')))
 }
 
 function isBinary(token: Token | undefined): boolean {
@@ -1019,25 +1014,18 @@ export class Parser {
         return undefined
       }
       const unaryPrefixes = [maybePrefix]
-      let finalPrefix = ['++', '--'].includes(maybePrefix.val) ? maybePrefix : undefined
       for (; ;) {
         if (this.peekNewline()) {
           this.moveToNextLine()
         }
         const nextPrefix = this.peekToken()
         if (nextPrefix && isUnary(nextPrefix)) {
-          if (finalPrefix) {
-            throw new Error(`Expected an expression after unary operator '${finalPrefix.val}' got another operator '${nextPrefix.val}'`)
-          }
-          if (['++', '--'].includes(nextPrefix.val)) {
-            finalPrefix = nextPrefix
-          }
           unaryPrefixes.push(this.takeToken())
         } else {
           break
         }
       }
-      const expr = this.parseCallsAndAccesses(opts)
+      const expr = this.parseExistentialUnary(opts)
       if (!expr) {
         throw new Error(`Expected expression after unary operator '${unaryPrefixes[unaryPrefixes.length - 1].val}'`)
       }
@@ -1052,25 +1040,42 @@ export class Parser {
       }
     }
 
-    const expr = this.parseCallsAndAccesses(opts)
-
-    // Check for postfix unary operation
-    if (expr && !this.peekSpace()) {
-      const maybePostfix = this.peekToken()
-      if (maybePostfix && maybePostfix.type === 'OPERATOR' && ['++', '--'].includes(maybePostfix.val)) {
-        const postfixOp = this.takeToken()
-        return new nodes.PostfixUnaryExpression(postfixOp, expr)
-      }
-    }
+    const expr = this.parseExistentialUnary(opts)
     return expr
   }
 
-  private parseBuiltinPrimary(): nodes.BuiltinPrimaryExpression | undefined {
-    const maybeBP = this.peekToken()
-    if (maybeBP?.type === 'BUILTIN_PRIMARY') {
-      return new nodes.BuiltinPrimaryExpression(this.takeToken())
+  private parseExistentialUnary(opts?: ParseExpressionState): nodes.Expression | undefined {
+    const expr = this.parseIncrementDecrementExpr(opts);
+    if (!expr) {
+      return undefined
     }
-    return undefined
+    const peek = this.peekToken()
+    if (peek?.type === 'OPERATOR' && peek.val === '?') {
+      const op = this.takeToken()
+      return new nodes.PostfixUnaryExpression(op, expr)
+    } else {
+      return expr
+    }
+  }
+
+  private parseIncrementDecrementExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
+    if (this.peekToken()?.type === 'UNARY_DEC_INC') {
+      const prefixOp = this.takeToken()
+      const expr = this.parseCallsAndAccesses(opts)
+      if (!expr) {
+        throw new Error(`Expected an expression after '${prefixOp.val}' (at '${this.peekToken()?.val}')`)
+      }
+      return new nodes.PrefixUnaryExpression(prefixOp, expr)
+    }
+    const expr = this.parseCallsAndAccesses(opts)
+    if (!expr) {
+      return undefined
+    }
+    if (this.peekToken()?.type === 'UNARY_DEC_INC') {
+      const postfixOp = this.takeToken()
+      return new nodes.PostfixUnaryExpression(postfixOp, expr)
+    }
+    return expr
   }
 
   private parseCallsAndAccesses(opts?: ParseExpressionState): nodes.Expression | undefined {
@@ -1098,13 +1103,27 @@ export class Parser {
       let peek = this.peekToken()
       if (!peek) {
         break
-      } else if (peek.type === 'OPERATOR' && peek.val === '?') {
-        const existentialOp = this.takeToken()
-        currentExpr = new nodes.PostfixUnaryExpression(existentialOp, currentExpr)
+      }
+      let existentialOp = undefined
+      let state = undefined
+      if (peek.type === 'OPERATOR' && peek.val === '?') {
+        state = this.cloneState()
+        existentialOp = this.takeToken()
+        peek = this.peekToken()
+        if (!peek) {
+          this.state = state
+          break
+        }
       }
 
-      peek = this.peekToken()
-      if (!peek) {
+      if (['(', '[', '.', '::'].includes(peek.type)) {
+        if (existentialOp) {
+          currentExpr = new nodes.PostfixUnaryExpression(existentialOp, currentExpr)
+        }
+      } else {
+        if (state) {
+          this.state = state
+        }
         break
       }
 
@@ -1173,11 +1192,19 @@ export class Parser {
         this.takeToken()
         currentExpr = new nodes.ArrayAccess(currentExpr, indexExpr)
       } else {
-        break
+        throw new Error(`BUG: unexpected token type in if chain in parseCallsAndAccesses: ${peek.type}`)
       }
     }
 
     return currentExpr
+  }
+
+  private parseBuiltinPrimary(): nodes.BuiltinPrimaryExpression | undefined {
+    const maybeBP = this.peekToken()
+    if (maybeBP?.type === 'BUILTIN_PRIMARY') {
+      return new nodes.BuiltinPrimaryExpression(this.takeToken())
+    }
+    return undefined
   }
 
   private parsePrimaryExpr(opts?: ParseExpressionState): nodes.Expression | undefined {

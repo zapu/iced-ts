@@ -104,17 +104,17 @@ const tests: TestCase[] = [
   { input: 'i = ++i', expected: 'i = ++i' },
 
   // Chained unary expressions
-  { input: '- - i', expected: '- -i' },
-  { input: '- -i', expected: '- -i' },
-  { input: '+ - +i', expected: '+ - +i' },
-  { input: '+ ++i', expected: '+ ++i' },
+  { input: '- - i', expected: '-(-i)' },
+  { input: '- -i', expected: '-(-i)' },
+  { input: '+ - +i', expected: '+(-(+i))' },
+  { input: '+ ++i', expected: '+(++i)' },
   { input: '++ +i', error: /Expected an expression after unary operator '\+\+'/ },
   { input: '-- +i', error: /Expected an expression after unary operator '\-\-'/ },
   { input: '+ ++ +i', error: /Expected an expression after unary operator '\+\+'/ },
-  { input: '-\n-\n-\n1', expected: '- - -1' },
-  { input: '- + -+ 1', expected: '- + - +1' },
-  { input: '- + - - 1', expected: '- + - -1' },
-  { input: 'foo - - - 1', expected: 'foo - - -1' },
+  { input: '-\n-\n-\n1', expected: '-(-(-1))' },
+  { input: '- + -+ 1', expected: '-(+(-(+1)))' },
+  { input: '- + - - 1', expected: '-(+(-(-1)))' },
+  { input: 'foo - - - 1', expected: 'foo - -(-1)' },
 
   // Almost implicit function calls, but targets are not identifiers or
   // parenthesized expressions, so they end up being binary operations.
@@ -658,11 +658,17 @@ foo
   { input: 'ok (if nonexistent? then false else true)', expected: 'ok((if (nonexistent?) { false } else { true }))' },
   { input: 'ok(if nonexistent? then false else true)', expected: 'ok(if (nonexistent?) { false } else { true })' },
 
+  { input: '(a+b)?', expected: '(a + b)?' },
+
   // unary prefix + postfix
-  { input: '-foo?', expected: '- foo?' },
-  { input: '-a++' , expected: '-a++' },
-  { input: '++a?', expected: '++a?' }, // should mean "++a?"
-  { input: 'a++?', expected: 'a++?' }, // should mean "a++?"
+  { input: '-foo?', expected: '-(foo?)' },
+  { input: '-foo?.bar++', expected: '-(foo?.bar++)' },
+  { input: '-foo?.bar++?', expected: '-((foo?.bar++)?)' },
+  { input: '-a++' , expected: '-(a++)' },
+  { input: '++a?', expected: '(++a)?' }, // should mean "++a?"
+  { input: 'a++?', expected: '(a++)?' }, // should mean "a++?"
+  { input: '-++a?', expected: '-((++a)?)'},
+  { input: '- - - 1?', expected: '-(-(-(1?)))' },
 ]
 
 if (runAll(tests)) {

@@ -1,5 +1,13 @@
 Parsing:
 
+- [ ] fix identifier scanning like:
+    `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`
+    - can't move forward with `operators.coffee` without this.
+
+- [x] Array literals
+    - [ ] not every variant is tested or parsed correctly, especially the
+      new-line delimited arrays
+
 - [ ] Cleanup `parseFunctionCall`, `parseAssign` (unused functions,
   functionality moved to other rule functions).
 
@@ -7,13 +15,9 @@ Parsing:
 
 - [x] existential operators in accesses e.g. 'foo?.bar'
     - [x] done again (redone)
-    - [ ] There is a wrong precedence on unary exprs vs. existential operator, e.g.
+    - [x] There is a wrong precedence on unary exprs vs. existential operator, e.g.
         `++a?` is parsed as `++(a?)` but should be parsed as `(++a)?`.
         Same with `a++?`, which fails to parse, but should be `(a++)?`.
-
-
-- [ ] fix identifier scanning like:
-    `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`
 
 - [x] multiple operators with whitespace
         `+ + - +1` -> `+ (+(-(+1)));`
@@ -37,8 +41,6 @@ Parsing:
                 num = 10; eq  2, (num |= 3)
         ```
         (this is all legal coffeescript from test/operators.coffee)
-
-- [ ] Array literals
 
 - [x] `if` statements w/ block or w/ `then`
 - [x] "post" `if` (`foo() if condition`, `return if condition` etc.)

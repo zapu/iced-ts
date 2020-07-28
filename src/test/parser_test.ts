@@ -674,6 +674,7 @@ foo
 
   // array literals
   { input: '[1,2,3]', expected: '[ 1, 2, 3 ]' },
+  { input: '[1,2,3,]', expected: '[ 1, 2, 3 ]' },
 ]
 
 if (runAll(tests)) {

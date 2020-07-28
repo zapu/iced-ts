@@ -427,16 +427,26 @@ export class ObjectLiteral extends Node {
 }
 
 export class ArrayLiteral extends Node {
-  emit(): string {
-    throw new Error("Method not implemented.")
-  }
-  debugEvalJS() {
-    throw new Error("Method not implemented.")
-  }
-  debugEmitCommon(): string {
-    throw new Error("Method not implemented.")
+  values: Expression[] = []
+  openBracket: Token
+  closeBracket?: Token
+
+  constructor(openBracket: Token) {
+    super()
+    this.openBracket = openBracket
   }
 
+  emit(): string {
+    return `[ ${this.values.map((x) => x.debugEmitCommon()).join(', ')} ]`
+  }
+
+  debugEvalJS() {
+    return this.values.map((x) => x.debugEvalJS())
+  }
+
+  debugEmitCommon(): string {
+    return `[ ${this.values.map((x) => x.debugEmitCommon()).join(', ')} ]`
+  }
 }
 
 export interface FunctionParam {

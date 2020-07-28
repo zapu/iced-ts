@@ -584,6 +584,8 @@ foo
   { input: 'if x\nhello()', error: /Empty block in an 'if'/ },
   { input: 'unless x\nhello()', error: /Empty block in an 'unless'/ },
 
+  { input: 'if x and y or z then j', expected: 'if (x and y or z) { x }' },
+
   // Loops
   { input: 'loop x()', expected: 'loop { x() }' },
   { input: 'loop\n  x()', expected: 'loop { x() }' },
@@ -669,6 +671,9 @@ foo
   { input: 'a++?', expected: '(a++)?' }, // should mean "a++?"
   { input: '-++a?', expected: '-((++a)?)'},
   { input: '- - - 1?', expected: '-(-(-(1?)))' },
+
+  // array literals
+  { input: '[1,2,3]', expected: '[ 1, 2, 3 ]' },
 ]
 
 if (runAll(tests)) {

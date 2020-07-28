@@ -7,6 +7,9 @@ const operatorPriority: { [k: string]: number } = {
   'if': 1,
   'unless': 1,
 
+  'and': 5,
+  'or': 5,
+
   'is': 10,
   'isnt': 10,
   '==': 10,
@@ -74,7 +77,7 @@ function isBinary(token: Token | undefined): boolean {
       'is', 'isnt', '==', '!=',
       '>=', '<=', '>', '<',
       '<<', '>>>', '>>', '?',
-      '%%', '%',
+      '%%', '%', 'or', 'and'
     ].includes(token.val)) ||
     ['IF', 'UNLESS', 'IN', 'OF'].includes(token.type))
 }
@@ -688,6 +691,39 @@ export class Parser {
     return new nodes.Assign(target, operator, value)
   }
 
+  private parseArrayLiteral(opts?: ParseExpressionState): nodes.ArrayLiteral | undefined {
+    if (this.peekToken()?.type !== '[') {
+      return undefined
+    }
+    const arrayOpen = this.takeToken()
+    const node = new nodes.ArrayLiteral(arrayOpen)
+    for(;;) {
+      if(this.peekToken()?.type === ']') {
+        const arrayClose = this.takeToken()
+        node.closeBracket = arrayClose
+        break
+      }
+
+      const expr = this.parseExpression(opts)
+      if (!expr) {
+        throw new Error(`Expected an expression in array literal, at '${this.peekToken()?.val}'`)
+      }
+      node.values.push(expr)
+      const peek = this.peekToken()
+      if (peek?.type === ',') {
+        const comma = this.takeToken()
+      } else if (peek?.type === ']') {
+        continue
+      } else if (this.peekNewline()) {
+        this.peekTokenThroughNewlines()
+      } else {
+        throw new Error(`Expected a comma or a newline in array literal, at '${this.peekToken()?.val}'`)
+      }
+    }
+
+    return node
+  }
+
   private parseObjectLiteral(opts?: ParseExpressionState): nodes.ObjectLiteral | undefined {
     let isBracketed = false
     if (this.peekToken()?.type === '{') {
@@ -1227,6 +1263,7 @@ export class Parser {
     const simple =
       this.parseFunction() ??
       this.parseObjectLiteral(opts) ??
+      this.parseArrayLiteral(opts) ??
       // this.parsePropertyAccessExpr(opts) ??
       // this.parseFunctionCall() ??
       this.parseIfExpression(opts) ??

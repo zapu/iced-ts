@@ -10,6 +10,9 @@ const operatorPriority: { [k: string]: number } = {
   'and': 5,
   'or': 5,
 
+  'in': 7,
+  'of': 7,
+
   'is': 10,
   'isnt': 10,
   '==': 10,

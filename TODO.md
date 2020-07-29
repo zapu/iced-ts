@@ -5,6 +5,8 @@ Parsing:
     - can't move forward with `operators.coffee` without this.
 
 - [x] Array literals
+    - [ ] Splat expressions. Maybe generalize `parseFunctionCallArgument` to do
+      these, e.g. a function like `parseMaybeSplatExpression`.
     - [ ] not every variant is tested or parsed correctly, especially the
       new-line delimited arrays
 
@@ -56,3 +58,17 @@ Parsing:
 
 - [x] object access `obj.x`
 - [ ] assign to array / object (pattern matching)
+
+- [ ] That's why `ref_` is needed:
+```
+test "#768: `in` should preserve evaluation order", ->
+  share = 0
+  a = -> share++ if share is 0
+  b = -> share++ if share is 1
+  c = -> share++ if share is 2
+  ok a() not in [b(),c()]
+  eq 3, share
+```
+    `a() not in [b(),c()]`
+    becomes
+    `ok((_ref = a()) !== b() && _ref !== c());`

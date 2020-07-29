@@ -114,6 +114,8 @@ const commonTokens: { [str: string]: TokenType } = {
 
     'true': 'BUILTIN_PRIMARY',
     'false': 'BUILTIN_PRIMARY',
+    'yes': 'BUILTIN_PRIMARY',
+    'no': 'BUILTIN_PRIMARY',
     'undefined': 'BUILTIN_PRIMARY',
     'null': 'BUILTIN_PRIMARY',
 
@@ -123,6 +125,9 @@ const commonTokens: { [str: string]: TokenType } = {
     '...': '...',
     '.': '.',
 } as const
+
+// Common tokens that are also identifiers
+const commonIsId = new Set(Object.keys(commonTokens).filter((x) => x.match(identifierRxp)))
 
 export function isTrivia(type: TokenType) {
     switch (type) {
@@ -241,6 +246,9 @@ export class Scanner {
     private scanCommon(): Token | null {
         for (const text in commonTokens) {
             if (this.chunk.indexOf(text) === 0) {
+                if (commonIsId.has(text) && this.chunk[text.length]?.match(/[$\w\x7f-\uffff]/)) {
+                    return null
+                }
                 return {
                     type: commonTokens[text],
                     consumed: text.length,

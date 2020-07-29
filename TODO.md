@@ -1,6 +1,6 @@
 Parsing:
 
-- [ ] fix identifier scanning like:
+- [x] fix identifier scanning like:
     `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`
     - can't move forward with `operators.coffee` without this.
 

@@ -79,6 +79,13 @@ function runAll(tests: TestCase[]) {
 }
 
 const tests: TestCase[] = [
+  // Identifier vs. "common tokens"
+  { input: 'yes', expected: 'yes' },
+  { input: 'yess', expected: 'yess' },
+  { input: 'atrue', expected: 'atrue' },
+  { input: '1true', expected: '1;true' },
+  { input: 'truefalse', expected: 'truefalse' },
+
   // Math
   { input: '1 + 2 * 3', expected: '1 + 2 * 3' },
   { input: '(1 + 2) * 3', expected: '(1 + 2) * 3' },
@@ -206,6 +213,8 @@ const tests: TestCase[] = [
   { input: 'a ?= 10', expected: 'a ?= 10' },
 
   { input: `foo\n20: 2`, expected: 'foo;{20: 2}' },
+
+  { input: 'true_val = true', expected: 'true_val = true'}, // id vs. common
 
   // `if` / `unless` in a binary expression
   { input: 'v if v', expected: 'v if v' },

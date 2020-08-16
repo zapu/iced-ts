@@ -175,22 +175,22 @@ export class StringLiteral extends Expression {
 }
 
 export class Identifier extends Expression {
-  content: string
-  constructor(content: string) {
+  token: Token
+  constructor(token: Token) {
     super()
-    this.content = content
+    this.token = token
   }
 
   emit(): string {
-    return this.content
+    return this.token.val
   }
 
   debugEvalJS(): number {
-    throw new Error(`Invalid evalMath on ${this.content}`)
+    throw new Error(`Invalid evalMath on ${this.token.val}`)
   }
 
   debugEmitCommon() {
-    return this.content
+    return this.token.val
   }
 }
 
@@ -446,6 +446,31 @@ export class ArrayLiteral extends Node {
 
   debugEmitCommon(): string {
     return `[ ${this.values.map((x) => x.debugEmitCommon()).join(', ')} ]`
+  }
+}
+
+export class Range extends Node {
+  left: Expression
+  right: Expression
+  operator: Token
+
+  constructor(left: Expression, right: Expression, operator: Token) {
+    super()
+    this.left = left
+    this.right = right
+    this.operator = operator
+  }
+
+  emit(): string {
+    return `[${this.left.emit()}${this.operator.val}${this.right.emit()}]`
+  }
+
+  debugEvalJS() {
+    throw new Error("Method not implemented.")
+  }
+
+  debugEmitCommon(): string {
+    return `[${this.left.debugEmitCommon()}${this.operator.val}${this.right.debugEmitCommon()}]`
   }
 }
 

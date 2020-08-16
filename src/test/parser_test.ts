@@ -684,6 +684,10 @@ foo
   // array literals
   { input: '[1,2,3]', expected: '[ 1, 2, 3 ]' },
   { input: '[1,2,3,]', expected: '[ 1, 2, 3 ]' },
+
+  // ranges
+  { input: '[a..b]', expected: '[a..b]' },
+  { input: '[a...b]', expected: '[a...b]' },
 ]
 
 if (runAll(tests)) {

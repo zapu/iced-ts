@@ -207,7 +207,7 @@ export class Parser {
     const token = this.peekToken()
     if (token?.type === 'IDENTIFIER') {
       this.takeToken()
-      return new nodes.Identifier(token.val)
+      return new nodes.Identifier(token)
     }
   }
 
@@ -545,6 +545,7 @@ export class Parser {
     const operator = this.takeToken()
     const iter1 = this.parseLeftHandValue()
     if (!iter1) {
+      console.log(operator)
       throw new Error(`Expected left-hand value after '${operator.val}', at '${this.peekToken()?.val}'`)
     }
     let iter2 = undefined
@@ -694,20 +695,50 @@ export class Parser {
     return new nodes.Assign(target, operator, value)
   }
 
-  private parseArrayLiteral(opts?: ParseExpressionState): nodes.ArrayLiteral | undefined {
+  private _parseRange(opts?: ParseExpressionState): nodes.Range | undefined {
+    // Method optimized to only be called form `parseArrayLiteral`.
+    // Start parsing after `[` (arrayOpen) has been consumed already.
+    const state = this.cloneState()
+    const exprLeft = this.parseExpression(opts)
+    if (!exprLeft) {
+      this.state = state
+      return undefined
+    }
+    const op = this.takeToken()
+    if (op.type !== '..' && op.type !== '...') {
+      this.state = state
+      return undefined
+    }
+    const exprRight = this.parseExpression()
+    if (!exprRight) {
+      this.state = state
+      return undefined
+    }
+    const arrayClose = this.takeToken()
+    if (!arrayClose) {
+      throw new Error(`Expected ']' after second expression in range`)
+    }
+    return new nodes.Range(exprLeft, exprRight, op)
+  }
+
+  private parseArrayLike(opts?: ParseExpressionState): nodes.ArrayLiteral | nodes.Range | undefined {
     if (this.peekToken()?.type !== '[') {
       return undefined
     }
     const arrayOpen = this.takeToken()
+    const range = this._parseRange(opts)
+    if (range) {
+      return range
+    }
     const node = new nodes.ArrayLiteral(arrayOpen)
-    for(;;) {
-      if(this.peekToken()?.type === ']') {
+    for (; ;) {
+      if (this.peekToken()?.type === ']') {
         const arrayClose = this.takeToken()
         node.closeBracket = arrayClose
         break
       }
 
-      const expr = this.parseExpression(opts)
+      const expr = this.parseFunctionCallArgument(opts)
       if (!expr) {
         throw new Error(`Expected an expression in array literal, at '${this.peekToken()?.val}'`)
       }
@@ -1215,7 +1246,11 @@ export class Parser {
         }
         // TODO: Emit new node type for `prototype` accesses
         currentExpr = new nodes.PropertyAccess(
-          new nodes.PropertyAccess(currentExpr, new nodes.Identifier('prototype')),
+          new nodes.PropertyAccess(currentExpr, new nodes.Identifier({
+            type: 'IDENTIFIER',
+            val: 'prototype',
+            consumed: 'prototype'.length,
+          })),
           accessId)
       } else if (peek.type === '[') {
         const openingBracket = this.takeToken()
@@ -1266,7 +1301,7 @@ export class Parser {
     const simple =
       this.parseFunction() ??
       this.parseObjectLiteral(opts) ??
-      this.parseArrayLiteral(opts) ??
+      this.parseArrayLike(opts) ??
       // this.parsePropertyAccessExpr(opts) ??
       // this.parseFunctionCall() ??
       this.parseIfExpression(opts) ??

@@ -688,6 +688,10 @@ foo
   // ranges
   { input: '[a..b]', expected: '[a..b]' },
   { input: '[a...b]', expected: '[a...b]' },
+
+  // for expression with ranges
+  { input: 'for [1..2]\n  x()', expected: 'for [1..2] { x() }' },
+  { input: 'x() for [1..2]', expected: 'x() for [1..2]' },
 ]
 
 if (runAll(tests)) {

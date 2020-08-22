@@ -276,6 +276,8 @@ export class LoopExpression extends Expression {
   }
 }
 
+// TODO: Need to support `for [a..b]\n  block` for types
+
 export class ForExpression extends Expression {
   operator: Token // 'FOR', 'UNTIL', or 'LOOP'
   iterType: Token // 'IN' or 'OF'

@@ -73,6 +73,6 @@ test "#768: `in` should preserve evaluation order", ->
   ok a() not in [b(),c()]
   eq 3, share
 ```
-    `a() not in [b(),c()]`
+    `ok a() not in [b(),c()]`
     becomes
     `ok((_ref = a()) !== b() && _ref !== c());`

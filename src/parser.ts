@@ -543,9 +543,10 @@ export class Parser {
       return undefined
     }
     const operator = this.takeToken()
+    // TODO: Parse range here somehow
+    const range = this.parsearra
     const iter1 = this.parseLeftHandValue()
     if (!iter1) {
-      console.log(operator)
       throw new Error(`Expected left-hand value after '${operator.val}', at '${this.peekToken()?.val}'`)
     }
     let iter2 = undefined

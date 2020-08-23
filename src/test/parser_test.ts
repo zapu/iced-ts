@@ -626,6 +626,10 @@ foo
   // instead of `foo(v for k ...)`
   { input: 'foo v for k,v of obj', expected: 'foo(v) for k, v of obj' },
 
+  // Can't have both expr and block in 'expr for (...) [then] block'
+  { input: 'foo(x) for x in arr then bar(x)', error: true },
+  { input: 'foo(x) for x in arr\n  bar(x)', error: /unexpected indentation/ },
+
   // Nested for loop expressions
   { input: 'x for x in xs for xs in list', expected: 'x for x in xs for xs in list' },
   { input: 'ret = (x for x in xs for xs in list)', expected: 'ret = (x for x in xs for xs in list)' },

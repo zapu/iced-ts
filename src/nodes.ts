@@ -277,25 +277,33 @@ export class LoopExpression extends Expression {
 }
 
 // TODO: Need to support `for [a..b]\n  block` for types
-
-export class ForExpression extends Expression {
-  operator: Token // 'FOR', 'UNTIL', or 'LOOP'
-  iterType: Token // 'IN' or 'OF'
+export type ForExpressionTarget = {
   iter: Expression
   iter2?: Expression
   target: Expression
-  block: Block | undefined
+  iterType: Token // 'IN' or 'OF'
+} | Range
 
-  constructor(operator: Token, iter: Expression, iter2: Expression | undefined, iterType: Token, target: Expression, block: Block | undefined) {
+export class ForExpression extends Expression {
+  operator: Token // 'FOR', 'UNTIL', or 'LOOP'
+  target: ForExpressionTarget
+  block: Block | undefined
+  expr: Expression | undefined
+
+  constructor(operator: Token, target: ForExpressionTarget, block: Block | undefined) {
     super()
     this.operator = operator
-    this.iterType = iterType
-    this.iter = iter
-    this.iter2 = iter2
     this.target = target
     this.block = block
   }
 
+  setExpression(expr: Expression) {
+    if(this.block) {
+      throw new Error('BUG: Cannot setExpression on ForExpression that has a block')
+    }
+    this.expr = expr
+  }
+
   emit(): string {
     throw new Error("Method not implemented.")
   }
@@ -305,38 +313,23 @@ export class ForExpression extends Expression {
   }
 
   debugEmitCommon(): string {
-    let ret = `for ${this.iter.debugEmitCommon()}`
-    if (this.iter2) {
-      ret += `, ${this.iter2.debugEmitCommon()}`
+    let ret = ''
+    if (this.expr) {
+      ret += `${this.expr.debugEmitCommon()} `
     }
-    ret += ` ${this.iterType.val} ${this.target.debugEmitCommon()}`
+    if (this.target instanceof Range) {
+      ret += `for ${this.target.debugEmitCommon()}`
+    } else {
+      ret += `for ${this.target.iter.debugEmitCommon()}`
+      if (this.target.iter2) {
+        ret += `, ${this.target.iter2.debugEmitCommon()}`
+      }
+      ret += ` ${this.target.iterType.val} ${this.target.target.debugEmitCommon()}`
+    }
     if (this.block) {
       ret += ` { ${this.block.debugEmitCommon()} }`
     }
     return ret
-  }
-}
-
-export class ForExpression2 extends Expression {
-  expr: Expression
-  loop: ForExpression
-
-  constructor(expr: Expression, loop: ForExpression) {
-    super()
-    this.expr = expr
-    this.loop = loop
-  }
-
-  emit(): string {
-    throw new Error("Method not implemented.")
-  }
-
-  debugEvalJS() {
-    throw new Error("Method not implemented.")
-  }
-
-  debugEmitCommon(): string {
-    return `${this.expr.debugEmitCommon()} ${this.loop.debugEmitCommon()}`
   }
 }
 

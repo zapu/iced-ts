@@ -407,7 +407,8 @@ export class Parser {
     if (!forExpr) {
       throw new Error(`We are in for expression but 'for' could not be parsed, at '${this.peekToken()?.val}'`)
     }
-    return new nodes.ForExpression2(expr, forExpr)
+    forExpr.setExpression(expr)
+    return forExpr
   }
 
   private parseAssignmentExpression(opts?: ParseExpressionState): nodes.Expression | undefined {
@@ -543,35 +544,51 @@ export class Parser {
       return undefined
     }
     const operator = this.takeToken()
-    // TODO: Parse range here somehow
-    const range = this.parsearra
-    const iter1 = this.parseLeftHandValue()
-    if (!iter1) {
-      throw new Error(`Expected left-hand value after '${operator.val}', at '${this.peekToken()?.val}'`)
-    }
-    let iter2 = undefined
-    if (this.peekToken()?.type === ',') {
-      const comma = this.takeToken()
-      // Second component of target.
-      iter2 = this.parseLeftHandValue()
-      if (!iter2) {
-        throw new Error(`Expected left-hand value after '${comma.val}' in '${operator.val}' expression, at '${this.peekToken()?.val}'`)
+    let feTarget
+    if (this.peekToken()?.type === '[') {
+      // May be a range but my also be a part of left-hand value.
+      const state = this.cloneState()
+      this.takeToken()
+      const range = this._parseRange(opts)
+      if (range) {
+        feTarget = range
+      } else {
+        this.state = state
       }
     }
-    const iterType = this.takeToken()
-    if (!['IN', 'OF'].includes(iterType.type)) {
-      throw new Error(`Expected 'in' or 'of' after iterator, got '${iterType.val}`)
-    }
-    const target = this.parseExpression()
-    if (!target) {
-      throw new Error(`Expected an expression after '${operator.val}'`)
-    }
-    if (this.peekToken()?.type === 'THEN') {
-      const then = this.takeToken()
-      if (this.peekNewline()) {
-        throw new Error(`Unexpected newline after '${then.val}'`)
+
+    if (!feTarget) {
+      // Continue looking for a valid feTarget.
+      const iter1 = this.parseLeftHandValue()
+      if (!iter1) {
+        throw new Error(`Expected left-hand value after '${operator.val}', at '${this.peekToken()?.val}'`)
       }
+      let iter2 = undefined
+      if (this.peekToken()?.type === ',') {
+        const comma = this.takeToken()
+        // Second component of target.
+        iter2 = this.parseLeftHandValue()
+        if (!iter2) {
+          throw new Error(`Expected left-hand value after '${comma.val}' in '${operator.val}' expression, at '${this.peekToken()?.val}'`)
+        }
+      }
+      const iterType = this.takeToken()
+      if (!['IN', 'OF'].includes(iterType.type)) {
+        throw new Error(`Expected 'in' or 'of' after iterator, got '${iterType.val}`)
+      }
+      const target = this.parseExpression()
+      if (!target) {
+        throw new Error(`Expected an expression after '${operator.val}'`)
+      }
+      if (this.peekToken()?.type === 'THEN') {
+        const then = this.takeToken()
+        if (this.peekNewline()) {
+          throw new Error(`Unexpected newline after '${then.val}'`)
+        }
+      }
+      feTarget = { iter: iter1, iter2, iterType, target }
     }
+
     let block = undefined
     if (!binaryForExpr) {
       block = this.parseBlock()
@@ -582,7 +599,8 @@ export class Parser {
         throw new Error(`Empty block in a '${operator.val}' expression`)
       }
     }
-    return new nodes.ForExpression(operator, iter1, iter2, iterType, target, block)
+
+    return new nodes.ForExpression(operator, feTarget, block)
   }
 
   private parseAnyLoopExpression(opts?: ParseExpressionState) {

@@ -63,6 +63,7 @@ const commonTokens: { [str: string]: TokenType } = {
     '+': 'OPERATOR',
     '-': 'OPERATOR',
     '/': 'OPERATOR',
+    '**': 'OPERATOR',
     '*': 'OPERATOR',
     '^': 'OPERATOR',
     '|': 'OPERATOR',

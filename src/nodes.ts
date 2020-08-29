@@ -232,6 +232,8 @@ export class BinaryExpression extends Expression {
         const a = +this.left.debugEvalJS()
         const b = +this.right.debugEvalJS()
         return (a % b + b) % b
+      case '**':
+        return Math.pow(+this.left.debugEvalJS(), +this.right.debugEvalJS());
       default:
         throw new Error(`Don't know how to evalJS with ${this.operator.val}`)
     }

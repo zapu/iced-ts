@@ -29,6 +29,7 @@ const operatorPriority: { [k: string]: number } = {
   '/': 100,
   '|': 150,
   '&': 150,
+  '**': 160,
 }
 
 interface ParserState {
@@ -78,7 +79,7 @@ function isUnary(token: Token): boolean {
 function isBinary(token: Token | undefined): boolean {
   return !!token && ((
     token.type === 'OPERATOR' &&
-    ['+', '-', '*', '/', '|', '^', '&',
+    ['+', '-', '*', '/', '|', '^', '&', '**',
       'is', 'isnt', '==', '!=',
       '>=', '<=', '>', '<',
       '<<', '>>>', '>>', '?',

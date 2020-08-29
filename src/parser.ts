@@ -27,6 +27,8 @@ const operatorPriority: { [k: string]: number } = {
   '-': 50,
   '*': 100,
   '/': 100,
+  '|': 150,
+  '&': 150,
 }
 
 interface ParserState {
@@ -473,7 +475,7 @@ export class Parser {
       }
       const right = this.parseUnaryExpr()
       if (!right) {
-        throw new Error(`parse error after ${opToken.val}, expected another expression`)
+        throw new Error(`parse error after ${opToken.val}, expected another expression ${opToken.lineNumber}`)
       }
       if (left instanceof nodes.BinaryExpression) {
         // TODO: Make sure all operator priorities are defined
@@ -1485,7 +1487,7 @@ export class Parser {
             this.state.pos = lineStartPos
             break
           } else if (indent > blockIndent) {
-            throw new Error("unexpected indentation")
+            throw new Error("unexpected indentation " + this.peekToken()?.lineNumber)
           }
         }
 

@@ -1,8 +1,11 @@
 Parsing:
 
-- [ ] For ranges (`[1..99]`, `[1...99]`)
-- Special "for range" syntax:
- `a() for [1..5]`
+- [ ] Power operator (**)
+    - Just emits Math.pow in iced
+
+- [x] For ranges (`[1..99]`, `[1...99]`)
+- [x] Special "for range" syntax:
+  `a() for [1..5]`
 
 - [x] fix identifier scanning like:
     `return1` scans as `[RETURN] [NUMBER 1]` instead of `[ID return1]`

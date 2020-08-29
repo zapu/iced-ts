@@ -261,14 +261,14 @@ test "#891: incorrect inversion of chained comparisons", ->
   ok (true unless 0 > 1 > 2)
   ok (true unless (this.NaN = 0/0) < 0/0 < this.NaN)
 
-test "#1234: Applying a splat to :: applies the splat to the wrong object", ->
-  nonce = {}
-  class C
-    method: -> @nonce
-    nonce: nonce
+# test "#1234: Applying a splat to :: applies the splat to the wrong object", ->
+#   nonce = {}
+#   class C
+#     method: -> @nonce
+#     nonce: nonce
 
-  arr = []
-  eq nonce, C::method arr... # should be applied to `C::`
+#   arr = []
+#   eq nonce, C::method arr... # should be applied to `C::`
 
 test "#1102: String literal prevents line continuation", ->
   eq "': '", '' +

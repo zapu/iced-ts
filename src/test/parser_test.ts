@@ -214,7 +214,7 @@ const tests: TestCase[] = [
 
   { input: `foo\n20: 2`, expected: 'foo;{20: 2}' },
 
-  { input: 'true_val = true', expected: 'true_val = true'}, // id vs. common
+  { input: 'true_val = true', expected: 'true_val = true' }, // id vs. common
 
   // `if` / `unless` in a binary expression
   { input: 'v if v', expected: 'v if v' },
@@ -679,10 +679,10 @@ foo
   { input: '-foo?', expected: '-(foo?)' },
   { input: '-foo?.bar++', expected: '-(foo?.bar++)' },
   { input: '-foo?.bar++?', expected: '-((foo?.bar++)?)' },
-  { input: '-a++' , expected: '-(a++)' },
+  { input: '-a++', expected: '-(a++)' },
   { input: '++a?', expected: '(++a)?' }, // should mean "++a?"
   { input: 'a++?', expected: '(a++)?' }, // should mean "a++?"
-  { input: '-++a?', expected: '-((++a)?)'},
+  { input: '-++a?', expected: '-((++a)?)' },
   { input: '- - - 1?', expected: '-(-(-(1?)))' },
 
   // array literals
@@ -696,6 +696,10 @@ foo
   // for expression with ranges
   { input: 'for [1..2]\n  x()', expected: 'for [1..2] { x() }' },
   { input: 'x() for [1..2]', expected: 'x() for [1..2]' },
+
+  // Pow operator ('**') is right-associative, which is something we can't test
+  // in this test but make sure it parses at all.
+  { input: '2**3**4', expected: '2 ** 3 ** 4' },
 ]
 
 if (runAll(tests)) {

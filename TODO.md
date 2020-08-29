@@ -14,7 +14,7 @@ method2 : () -> hi
 ```
     Should emit one object with both `method` and `method2` instead of two separate objects.
 
-- [ ] Power operator (**)
+- [x] Power operator (**)
     - Just emits Math.pow in iced
 
 - [x] For ranges (`[1..99]`, `[1...99]`)

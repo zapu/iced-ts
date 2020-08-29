@@ -33,6 +33,11 @@ const operatorPriority: { [k: string]: number } = {
   '**': 160,
 }
 
+// Right-associative operators.
+const operatorRightAssoc: { [k: string]: boolean } = {
+  '**': true,
+}
+
 interface ParserState {
   pos: number
   inFCall: number
@@ -486,6 +491,10 @@ export class Parser {
         }
         if (operatorPriority[left.operator.val] === undefined) {
           throw new Error(`undefined operator priority for '${left.operator.val}'`)
+        }
+        if (opToken.val === left.operator.val && operatorRightAssoc[opToken.val]) {
+          left.right = new nodes.BinaryExpression(left.right, opToken, right)
+          continue
         }
         if (operatorPriority[opToken.val] > operatorPriority[left.operator.val]) {
           left.right = new nodes.BinaryExpression(left.right, opToken, right)

@@ -27,6 +27,7 @@ const operatorPriority: { [k: string]: number } = {
   '-': 50,
   '*': 100,
   '/': 100,
+  '//': 100,
   '|': 150,
   '&': 150,
   '**': 160,
@@ -79,7 +80,7 @@ function isUnary(token: Token): boolean {
 function isBinary(token: Token | undefined): boolean {
   return !!token && ((
     token.type === 'OPERATOR' &&
-    ['+', '-', '*', '/', '|', '^', '&', '**',
+    ['+', '-', '*', '/', '//', '|', '^', '&', '**',
       'is', 'isnt', '==', '!=',
       '>=', '<=', '>', '<',
       '<<', '>>>', '>>', '?',

@@ -1,5 +1,17 @@
 Parsing:
 
+- [ ]
+```
+
+x = 2
+method : () ->
+  x = 3
+
+method2 : () -> hi
+
+```
+    Should emit one object with both `method` and `method2` instead of two separate objects.
+
 - [ ] Power operator (**)
     - Just emits Math.pow in iced
 

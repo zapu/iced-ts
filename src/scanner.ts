@@ -1,6 +1,6 @@
 
 const whitespaceRxp = /^[ \t]+/
-const numberRxp = /^[0-9]+/
+const numberRxp = /^\d*\.?\d+(e[+-]?\d+)?/
 const identifierRxp = /^(?!\d)([$\w\x7f-\uffff]+)/
 
 export type TokenType =
@@ -52,6 +52,8 @@ const commonTokens: { [str: string]: TokenType } = {
     '>>>=': 'ASSIGN_OPERATOR',
     '>>=': 'ASSIGN_OPERATOR',
     '?=': 'ASSIGN_OPERATOR',
+    '%%=': 'ASSIGN_OPERATOR',
+    '%=': 'ASSIGN_OPERATOR',
 
     '<<': 'OPERATOR',
     '>>>': 'OPERATOR',
@@ -251,6 +253,10 @@ export class Scanner {
     private scanCommon(): Token | null {
         for (const text in commonTokens) {
             if (this.chunk.indexOf(text) === 0) {
+                // Check if it's a common token that also matches the
+                // identifier regexp. Make sure we do not consume what is just
+                // a beginning of an identifier. `text.lenght` checks the
+                // character just after the current common token matched.
                 if (commonIsId.has(text) && this.chunk[text.length]?.match(/[$\w\x7f-\uffff]/)) {
                     return null
                 }

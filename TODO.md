@@ -1,6 +1,8 @@
 Parsing:
 
-- [ ] numbers with decimal point
+- [ ] implement `by` operator in for loops
+
+- [x] numbers with decimal point
 
 - [ ]
 ```

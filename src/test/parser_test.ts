@@ -670,11 +670,19 @@ foo
   { input: 'a?[b].x.y?.z', expected: 'a?[b].x.y?.z' },
   { input: 'foo?().bar?.bz', expected: 'foo?().bar?.bz' },
 
+  { input: 'x = a?', expected: 'x = a?' },
+  { input: 'x = a ?', error: true }, // whitespace between 'a' and '?' is not allowed
+
   // Postfix existential operator
   { input: 'ok (if nonexistent? then false else true)', expected: 'ok((if (nonexistent?) { false } else { true }))' },
   { input: 'ok(if nonexistent? then false else true)', expected: 'ok(if (nonexistent?) { false } else { true })' },
 
+  // Special case - existential operator + imp function call
+  { input: 'a?0', expected: 'a?(0)' },
+  { input: 'a?0,1,2', expected: 'a?(0,1,2)' },
+
   // Existential binary operator
+  { input: 'a? + 2', expected: 'a? + 2' },
   { input: 'a ? + 2', expected: 'a ? +2' },
   { input: 'a ? 0', expected: 'a ? 0' },
   { input: 'eq a, b ? 0', expected: 'eq(a,b ? 0)' },
@@ -687,8 +695,8 @@ foo
   { input: '-foo?.bar++', expected: '-(foo?.bar++)' },
   { input: '-foo?.bar++?', expected: '-((foo?.bar++)?)' },
   { input: '-a++', expected: '-(a++)' },
-  { input: '++a?', expected: '(++a)?' }, // should mean "++a?"
-  { input: 'a++?', expected: '(a++)?' }, // should mean "a++?"
+  { input: '++a?', expected: '(++a)?' },
+  { input: 'a++?', expected: '(a++)?' },
   { input: '-++a?', expected: '-((++a)?)' },
   { input: '- - - 1?', expected: '-(-(-(1?)))' },
 

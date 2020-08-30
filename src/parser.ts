@@ -1148,14 +1148,14 @@ export class Parser {
     if (!expr) {
       return undefined
     }
-    return expr; //xxx
-    const peek = this.peekToken()
-    if (peek?.type === 'OPERATOR' && peek.val === '?') {
-      const op = this.takeToken()
-      return new nodes.PostfixUnaryExpression(op, expr)
-    } else {
-      return expr
+    if (!this.peekSpace()) {
+      const peek = this.peekToken()
+      if (peek?.type === 'OPERATOR' && peek.val === '?') {
+        const op = this.takeToken()
+        return new nodes.PostfixUnaryExpression(op, expr)
+      }
     }
+    return expr
   }
 
   private parseIncrementDecrementExpr(opts?: ParseExpressionState): nodes.Expression | undefined {

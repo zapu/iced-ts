@@ -625,6 +625,7 @@ foo
   // ForExpression2 can't be greedy in imp fcalls, we want `foo(v) for k ...`
   // instead of `foo(v for k ...)`
   { input: 'foo v for k,v of obj', expected: 'foo(v) for k, v of obj' },
+  { input: 'foo x, i for i in arr', expected: 'foo(x,i) for i in arr' },
 
   // Can't have both expr and block in 'expr for (...) [then] block'
   { input: 'foo(x) for x in arr then bar(x)', error: true },
@@ -672,6 +673,12 @@ foo
   // Postfix existential operator
   { input: 'ok (if nonexistent? then false else true)', expected: 'ok((if (nonexistent?) { false } else { true }))' },
   { input: 'ok(if nonexistent? then false else true)', expected: 'ok(if (nonexistent?) { false } else { true })' },
+
+  // Existential binary operator
+  { input: 'a ? + 2', expected: 'a ? +2' },
+  { input: 'a ? 0', expected: 'a ? 0' },
+  { input: 'eq a, b ? 0', expected: 'eq(a,b ? 0)' },
+  { input: 'eq a, b, c ? 0, d', expected: 'eq(a,b,c ? 0,d)' },
 
   { input: '(a+b)?', expected: '(a + b)?' },
 

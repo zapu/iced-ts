@@ -492,11 +492,8 @@ export class Parser {
         if (operatorPriority[left.operator.val] === undefined) {
           throw new Error(`undefined operator priority for '${left.operator.val}'`)
         }
-        if (opToken.val === left.operator.val && operatorRightAssoc[opToken.val]) {
-          left.right = new nodes.BinaryExpression(left.right, opToken, right)
-          continue
-        }
-        if (operatorPriority[opToken.val] > operatorPriority[left.operator.val]) {
+        if ((opToken.val === left.operator.val && operatorRightAssoc[opToken.val]) ||
+          operatorPriority[opToken.val] > operatorPriority[left.operator.val]) {
           left.right = new nodes.BinaryExpression(left.right, opToken, right)
           continue
         }
@@ -1151,6 +1148,7 @@ export class Parser {
     if (!expr) {
       return undefined
     }
+    return expr; //xxx
     const peek = this.peekToken()
     if (peek?.type === 'OPERATOR' && peek.val === '?') {
       const op = this.takeToken()
@@ -1161,6 +1159,7 @@ export class Parser {
   }
 
   private parseIncrementDecrementExpr(opts?: ParseExpressionState): nodes.Expression | undefined {
+    // Parse '++', '--' unary expression.
     if (this.peekToken()?.type === 'UNARY_DEC_INC') {
       const prefixOp = this.takeToken()
       const expr = this.parseCallsAndAccesses(opts)
